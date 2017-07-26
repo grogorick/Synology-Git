@@ -1,5 +1,6 @@
 <?php
 
+define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
 define("CONFIG_SSH_USER", "***REMOVED***");
 define("CONFIG_SSH_PASS_MD5", "***REMOVED***"); 
 define("CONFIG_SSH_PORT", 22);
@@ -15,6 +16,9 @@ function show_header() {
 		<style>
 			section {
 				padding-top: 20px;
+			}
+			p {
+				padding-top: 10px;
 			}
 			form {
 				display: inline-block;
@@ -59,11 +63,13 @@ function show_header() {
 				font-size: 80%;
 				border-left: 1px solid #ddd;
 				padding-left: 20px;
+				margin-top: 5px;
 				display: inline-block;
 			}
 			.indented {
 				display: block;
 				padding-left: 20px;
+				margin-top: 5px;
 			}
 			.hidden {
 				display: none;
@@ -274,7 +280,7 @@ else {
 	$second_row = true;
 	foreach ($git_repos as $git_name) {
 		$git_dir = $git_name . ".git";
-		$git_url = "ssh://" . CONFIG_SSH_USER . "@" . $_SERVER["SERVER_NAME"] . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
+		$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
 		$git_description = shell(cd_git . "cat $git_dir/description;");
 		$is_empty = shell(cd_git . "cd $git_dir/refs/heads;" . count_files) == "0";
 		
@@ -340,20 +346,16 @@ else {
 		if ($is_empty) {
 ?>
 						<p>
-							Ein komplett neues Projekt starten:<br />
+							Neues/leeres Projekt:<br />
+							<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
 							<span class="code">
-								git clone <?=$git_url?><br />
-								cd test<br />
-								touch README.md<br />
-								git add README.md<br />
-								git commit -m "add README"<br />
-								git push -u origin master
+								git clone <?=$git_url?> 
 							</span>
 						</p>
 						<p>
-							Einen existierenden Ordner hochladen:<br />
+							Existierendes Verzeichnis:<br />
+							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 							<span class="code">
-								cd existing_folder<br />
 								git init<br />
 								git remote add origin <?=$git_url?><br />
 								git add .<br />
@@ -362,9 +364,9 @@ else {
 							</span>
 						</p>
 						<p>
-							Ein existierendes (lokales) Git Repository hochladen:<br />
+							Existierendes lokales Git Repository:<br />
+							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 							<span class="code">
-								cd existing_repo<br />
 								git remote add origin <?=$git_url?><br />
 								git push -u origin --all<br />
 								git push -u origin --tags
@@ -380,7 +382,7 @@ else {
 			$tags = explode("\n", shell(cd_git . "cd $git_dir;" . "git tag;"));
 ?>
 						<p>
-							<span class="code"><?=$git_url?></span>
+							<span class="code">git clone <?=$git_url?></span>
 						</p>
 						<p>
 							<?=sipl(count($branches), "Branch", "Branches")?>:
