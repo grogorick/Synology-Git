@@ -1,58 +1,13 @@
 <?php
-session_start();
-if (isset($_SESSION['auth'])) {
-	if (time() - $_SESSION['auth'] > 1800) {
-		session_unset();
-	}
-}
-if (!isset($_SESSION["auth"])) {
-	if ($_GET["auth"] != "Crosstrainer2Fahrrad") {
-		session_destroy();
-		http_response_code(404);
-		exit;
-	}
-	$_SESSION['auth'] = time();
-	header("Location: /");
-}
-$_SESSION['auth'] = time();
+
+define("CONFIG_SSH_USER", "***REMOVED***");
+define("CONFIG_SSH_PASS_MD5", "***REMOVED***"); 
+define("CONFIG_SSH_PORT", 22);
+define("CONFIG_GIT_BASE_PATH", "/volume1/git/");
 
 
 
-function shell($cmd) {
-	$ret = shell_exec($cmd);
-	if (substr($ret, -1) === "\n") {
-		$ret = substr($ret, 0, -1);
-	}
-	return $ret;
-}
-
-define("ls", "ls -1;");
-define("pwd", "pwd;");
-define("cd_git", "cd /volume1/git;");
-define("count_files", "ls -1 | wc -l;");
-
-
-
-function msg($text) {
-	return "<section><span class=\"message\">$text</span></section>\n";
-}
-
-function check_git_name($git_name) {
-	if (strlen($git_name) < 3) {
-		return "Der gewählte Name ist zu kurz: mindestens 3 Zeichen.";
-	}
-	else if (!preg_match("/^[A-Za-z0-9_+\-]+$/", $git_name)) {
-		return "Der gewählte Name enthält unerlaubte Zeichen. Benutze nur: A-Z a-z 0-9 _ + -";
-	}
-	return true;
-}
-
-function sipl($number, $singular, $plural) {
-	return $number . " " . ($number == 1 ? $singular : $plural);
-}
-
-
-
+function show_header() {
 ?>
 <html>
 	<head>
@@ -72,11 +27,22 @@ function sipl($number, $singular, $plural) {
 			table td {
 				vertical-align: top;
 			}
+			input[type="text"], input[type="password"] {
+				background: transparent;
+				border: 0px;
+				border-top: 1px solid #ddd;
+				border-bottom: 1px solid #ddd;
+			}
+			a {
+				color: #000;
+				text-decoration: none;
+			}
 			.button {
 				background: transparent;
-				border: 0;
+				border: 0px;
 				border-left: 1px solid #ddd;
 				border-right: 1px solid #ddd;
+				padding: 0px 5px;
 				cursor: pointer;
 			}
 			.button:hover {
@@ -120,6 +86,105 @@ function sipl($number, $singular, $plural) {
 		</style>
 	</head>
 	<body>
+<?php
+}
+
+function show_footer() {
+?>
+	</body>
+</html>
+<?php
+}
+
+
+
+session_start();
+if (isset($_SESSION['auth'])) {
+	if (time() - $_SESSION['auth'] > 1800) {
+		session_unset();
+	}
+}
+if (!isset($_SESSION["auth"])) {
+	if (isset($_POST["user"]) && isset($_POST["pass"]) && $_POST["user"] === CONFIG_SSH_USER && md5($_POST["pass"]) === CONFIG_SSH_PASS_MD5) {
+		session_regenerate_id(true);
+		$_SESSION["user"] = $_POST["user"];
+		$_SESSION['auth'] = time();
+		header("Location: /");
+		exit;
+	}
+	else if (isset($_GET["login"])) {
+		show_header();
+?>
+		<section>
+			<form action="" method="post">
+				<input type="text" name="user" placeholder="Nutzer" />
+				<input type="password" name="pass" placeholder="Passwort" />
+				<input type="submit" value="&rarr;" class="button" />
+			</form>
+		</section>
+<?php
+		show_footer();
+		exit;
+	}
+}
+if (isset($_GET["logout"])) {
+	session_unset();
+	header("Location: /");
+	exit;
+}
+if (!isset($_SESSION["auth"])) {
+	session_destroy();
+	http_response_code(404);
+	exit;
+}
+$_SESSION['auth'] = time();
+
+
+
+function shell($cmd) {
+	$ret = shell_exec($cmd);
+	if (substr($ret, -1) === "\n") {
+		$ret = substr($ret, 0, -1);
+	}
+	return $ret;
+}
+
+define("ls", "ls -1;");
+define("pwd", "pwd;");
+define("cd_git", "cd " . CONFIG_GIT_BASE_PATH . ";");
+define("count_files", "ls -1 | wc -l;");
+
+
+
+function msg($text) {
+	return "<section><span class=\"message\">$text</span></section>\n";
+}
+
+function check_git_name($git_name) {
+	if (strlen($git_name) < 3) {
+		return "Der gewählte Name ist zu kurz: mindestens 3 Zeichen.";
+	}
+	else if (!preg_match("/^[A-Za-z0-9_+\-]+$/", $git_name)) {
+		return "Der gewählte Name enthält unerlaubte Zeichen. Benutze nur: A-Z a-z 0-9 _ + -";
+	}
+	return true;
+}
+
+function sipl($number, $singular, $plural) {
+	return $number . " " . ($number == 1 ? $singular : $plural);
+}
+
+
+
+show_header();
+?>
+		
+		
+		
+		<section>
+			<?=$_SESSION["user"]?> &nbsp; <a href="/?logout" class="button">ausloggen</a>
+		</section>
+
 		
 		
 		
@@ -209,7 +274,7 @@ else {
 	$second_row = true;
 	foreach ($git_repos as $git_name) {
 		$git_dir = $git_name . ".git";
-		$git_url = "ssh://GITUSER@" . $_SERVER["SERVER_NAME"] . "/volume1/git/" . $git_name . ".git";
+		$git_url = "ssh://" . CONFIG_SSH_USER . "@" . $_SERVER["SERVER_NAME"] . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
 		$git_description = shell(cd_git . "cat $git_dir/description;");
 		$is_empty = shell(cd_git . "cd $git_dir/refs/heads;" . count_files) == "0";
 		
@@ -359,5 +424,7 @@ else {
 }
 ?>
 		</section>
-	</body>
-</html>
+<?php
+show_footer();
+?>
+
