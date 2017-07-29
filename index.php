@@ -102,6 +102,55 @@ function show_footer() {
 <?php
 }
 
+function show_setup_instructions() {
+?>
+		<section>
+			Zuerst wird ein Basisordner benötigt, in dem alle Git-Verzeichnisse angelegt werden sollen:
+			<ul>
+				<li>In der App <i>Systemsteuerung</i> die Kategorie <i>Gemeinsamer Ordner</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+				<ul>
+					<li>Name: <b>git</b></li>
+					<li>[ &nbsp; ] Verbergen sie diesen gemenisamen Ordner unter "Netzwerkumgebung"</li>
+					<li>[&check;] Unterordner und Dateien vor Benutzern ohne Berechtigungen ausblenden</li>
+					<li>[ &nbsp; ] Papierkorb aktivieren</li>
+					<li>[ &nbsp; ] Diesen gemeinsamen Ordner verschlüsseln</li>
+				</ul>
+				<li><i>OK</i>.</li>
+			</ul>
+			Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
+			Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
+			<ul>
+				<li>Filter von <i>Lokale Benutzer</i> zu <i>Lokale Gruppen</i> wechseln.</li>
+				<li>Der Gruppe <i>http</i> die Berechtigungen zum <i>Lesen/Schreiben</i> [&check;] aktivieren.</li>
+				<li><i>OK</i>.</li>
+			</ul>
+			
+			Nun wird ein Nutzer für den externen Zugriff per Git benötigt:
+			<ul>
+				<li>In der App <i>Systemsteuering</i> die Kategorie <i>Benutzer</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+				<ul>
+					<li>Name: <b>git</b></li>
+					<li>[&check;] Lassen Sie nicht zu, dass der Benutze das Konto-Passwort ändern kann.</li>
+				</ul>
+				<li><i>Weiter</i></li>
+				<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> aktivieren.</li>
+				<li><i>Weiter</i></li>
+				<li>Im folgenden Fenster <i>Berechtigungen für gemeinsame Ordner zuweisen</i> für den gemeinsamen Ordner <i>web</i> die Spalte <i>Kein Zugriff</i> [&check;] aktivieren.</li>
+				<li><i>2 x Weiter</i></li>
+				<li>Im folgenden Fenster <i>Anwendungsberechtigungen zuweisen</i> für alle Anwendungen <i>Verweigern</i> [&check;] aktivieren.</li>
+				<li><i>2 x Weiter</i></li>
+				<li><i>Übernehmen</i></li>
+			</ul>
+			
+			Zuletzt muss der externe Zugriff per GIt für diesen Nutzer noch zugelassen werden:
+			<ul>
+				<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
+				<li><i>Übernehmen</i></li>
+			</ul>
+		</section>
+<?php
+}
+
 
 
 session_start();
@@ -183,6 +232,7 @@ function sipl($number, $singular, $plural) {
 
 
 show_header();
+show_setup_instructions();
 ?>
 		
 		
@@ -221,7 +271,7 @@ if (isset($_POST["action"])) {
 			$create_git_description = trim(strip_tags($_POST["git_description"]));
 			echo 
 "		" . msg("Neues Git Repository wird erstellt... <b>$git_name_create</b><br />" . 
-				"<i>" . shell(cd_git . "mkdir $git_dir;" . "chgrp git $git_dir;" . "cd $git_dir;" . "git init --bare --shared;" . "echo $create_git_description > description;") . "</i>");
+				"<i>" . shell(cd_git . "mkdir $git_dir;" . "cd $git_dir;" . "git init --bare --shared;" . "echo $create_git_description > description;") . "</i>");
 		}
 	}
 	else if ($_POST["action"] === "rename_git") {
