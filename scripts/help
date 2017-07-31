@@ -1,0 +1,8 @@
+echo
+echo Only git actions and the following commands are supported for this ssh user:
+echo - help
+echo - add_key
+echo - list_keys
+echo - delete_key
+echo - exit
+echo

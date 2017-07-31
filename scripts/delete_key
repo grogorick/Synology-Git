@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if [ -z "$1" ]
+then
+	# Read in the SSH key index
+	echo -n "public key index to delete: "
+	read key_idx
+else
+	# Get the SSH key index from first argument
+	key_idx=$1
+fi
+
+# print key
+sed "${key_idx}q;d" .ssh/authorized_keys
+
+# remove key
+sed -i "${key_idx}d" .ssh/authorized_keys
+

@@ -1,0 +1,56 @@
+#!/bin/sh
+
+config_pass="***REMOVED***"
+
+echo -n "password: "
+read -s pass
+echo
+
+pass_md5=$(php -r "echo md5('$pass');")
+
+if [ "$pass_md5" != "$config_pass" ]
+then
+	# Dislpay a notice and stop
+	echo "sorry..."
+	exit 1
+fi
+
+if [ -z "$1" ]
+then
+	echo use the following command to find your public key:
+	echo '  cat ~/.ssh/$(ls -1 ~/.ssh | grep .pub)'
+	echo
+	
+	# Read in the SSH key
+	echo -n "new public key: "
+	read key
+else
+	# Get the SSH key from first argument
+	key=$1
+fi
+
+# Place the key in a temporary file
+echo "$key" > tmp_keyfile
+
+# Generate a fingerprint
+fingerprint=$(ssh-keygen -lf tmp_keyfile)
+
+# Check for errors
+if [ $(echo "$fingerprint" | egrep -c '(R|D)SA') -eq 0 ]
+then
+	# Display the fingerprint error and clean up
+	echo "error: $fingerprint"
+	rm tmp_keyfile
+	exit 1
+fi
+
+# Add the key to the authorised keys file and clean up
+mkdir -p .ssh &&\
+echo -n "no-agent-forwarding,no-port-forwarding,no-X11-forwarding " >> .ssh/authorized_keys &&\
+cat tmp_keyfile >> .ssh/authorized_keys
+rm tmp_keyfile
+
+# Display the fingerprint for reference
+echo "success! added a key with the following fingerprint:"
+echo $fingerprint
+

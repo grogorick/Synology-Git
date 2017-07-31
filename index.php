@@ -1,8 +1,19 @@
 <?php
 
+/*
+Required Apps:
+	- PHP 7.0
+	- Web Station
+	- Git Server
+*/
+
+
+
+define("CONFIG_LOGIN_USER", "***REMOVED***");
+define("CONFIG_LOGIN_PASS_MD5", "***REMOVED***");
+
 define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
-define("CONFIG_SSH_USER", "***REMOVED***");
-define("CONFIG_SSH_PASS_MD5", "***REMOVED***"); 
+define("CONFIG_SSH_USER", "gituser");
 define("CONFIG_SSH_PORT", 22);
 define("CONFIG_GIT_BASE_PATH", "/volume1/git/");
 
@@ -40,6 +51,11 @@ function show_header() {
 			a {
 				color: #000;
 				text-decoration: none;
+			}
+			hr {
+				border: 0px;
+				height: 1px;
+				background: #ddd;
 			}
 			.button {
 				background: transparent;
@@ -104,7 +120,29 @@ function show_footer() {
 
 function show_setup_instructions() {
 ?>
-		<section>
+		<section id="short_setup_instructions" class="hidden">
+			<u>Einrichtung:</u>
+			<ul>
+				<li>
+					Erstelle einen neuen <i>Gemeinsamen Ordner</i> <b>git</b> und gib der Gruppe <i>http</i> die Berechtigungen <i>Lesen/Schreiben</i>.
+				</li>
+				<li>
+					Erstelle einen neuen <i>Benutzer</i> <b>git</b> und füge ihn der Gruppe <i>http</i> zu.
+				</li>
+				<li>
+					Dem Benutzer in der <i>Git Server</i> App den Zugriff für den Nutzer <b>git</b> erlauben.
+				</li>
+			</ul>
+			
+			<span class="button" 
+				onclick="document.getElementById('short_setup_instructions').classList.add('hidden'); 
+						document.getElementById('long_setup_instructions').classList.remove('hidden');">detaillierte Anleitung anzeigen</span>
+			<hr />
+		</section>
+		
+		<section id="long_setup_instructions" class="hidden">
+			<u>Einrichtung:</u><br />
+			<br />
 			Zuerst wird ein Basisordner benötigt, in dem alle Git-Verzeichnisse angelegt werden sollen:
 			<ul>
 				<li>In der App <i>Systemsteuerung</i> die Kategorie <i>Gemeinsamer Ordner</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
@@ -133,7 +171,7 @@ function show_setup_instructions() {
 					<li>[&check;] Lassen Sie nicht zu, dass der Benutze das Konto-Passwort ändern kann.</li>
 				</ul>
 				<li><i>Weiter</i></li>
-				<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> aktivieren.</li>
+				<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> [&check;] aktivieren.</li>
 				<li><i>Weiter</i></li>
 				<li>Im folgenden Fenster <i>Berechtigungen für gemeinsame Ordner zuweisen</i> für den gemeinsamen Ordner <i>web</i> die Spalte <i>Kein Zugriff</i> [&check;] aktivieren.</li>
 				<li><i>2 x Weiter</i></li>
@@ -142,12 +180,59 @@ function show_setup_instructions() {
 				<li><i>Übernehmen</i></li>
 			</ul>
 			
-			Zuletzt muss der externe Zugriff per GIt für diesen Nutzer noch zugelassen werden:
+			Zuletzt muss der externe Zugriff per Git für diesen Nutzer noch zugelassen werden:
 			<ul>
 				<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
 				<li><i>Übernehmen</i></li>
 			</ul>
+			
+			<span class="button" 
+				onclick="document.getElementById('long_setup_instructions').classList.add('hidden'); 
+						document.getElementById('short_setup_instructions').classList.remove('hidden');">kurze Anleitung anzeigen</span>
+			<hr />
 		</section>
+<?php
+}
+
+function show_empty_git_help($git_url) {
+?>
+						<p>
+							Neues/leeres Projekt:<br />
+							<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
+							<span class="code">
+								git clone <?=$git_url?> 
+							</span>
+						</p>
+						<p>
+							Existierendes Verzeichnis:<br />
+							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+							<span class="code">
+								git init<br />
+								git remote add origin <?=$git_url?><br />
+								git add .<br />
+								git commit -m "Initial commit"<br />
+								git push -u origin master
+							</span>
+						</p>
+						<p>
+							Existierendes lokales Git Repository:<br />
+							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+							<span class="code">
+								git remote add origin <?=$git_url?><br />
+								git push -u origin --all<br />
+								git push -u origin --tags
+							</span>
+						</p>
+						<p>
+							Existierendes online Git Repository:<br />
+							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+							<span class="code">
+								git remote remove origin<br />
+								git remote add origin <?=$git_url?><br />
+								git push -u origin --all<br />
+								git push -u origin --tags
+							</span>
+						</p>
 <?php
 }
 
@@ -160,7 +245,7 @@ if (isset($_SESSION['auth'])) {
 	}
 }
 if (!isset($_SESSION["auth"])) {
-	if (isset($_POST["user"]) && isset($_POST["pass"]) && $_POST["user"] === CONFIG_SSH_USER && md5($_POST["pass"]) === CONFIG_SSH_PASS_MD5) {
+	if (isset($_POST["user"]) && isset($_POST["pass"]) && $_POST["user"] === CONFIG_LOGIN_USER && md5($_POST["pass"]) === CONFIG_LOGIN_PASS_MD5) {
 		session_regenerate_id(true);
 		$_SESSION["user"] = $_POST["user"];
 		$_SESSION['auth'] = time();
@@ -232,15 +317,26 @@ function sipl($number, $singular, $plural) {
 
 
 show_header();
-show_setup_instructions();
 ?>
 		
 		
 		
 		<section>
-			<?=$_SESSION["user"]?> &nbsp; <a href="/?logout" class="button">ausloggen</a>
+			<?=$_SESSION["user"]?> &nbsp; 
+			<a href="/?logout" class="button">ausloggen</a> &nbsp; &nbsp; 
+			<span class="button" style="float: right;" 
+				onclick="document.getElementById('long_setup_instructions').classList.add('hidden'); 
+						document.getElementById('short_setup_instructions').classList.toggle('hidden');">
+				Anleitung zur Synology NAS Einrichtung
+			</span>
+			<hr />
 		</section>
 
+		
+		
+<?php
+show_setup_instructions();
+?>
 		
 		
 		
@@ -394,35 +490,7 @@ else {
 					<td colspan="2">
 <?php
 		if ($is_empty) {
-?>
-						<p>
-							Neues/leeres Projekt:<br />
-							<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
-							<span class="code">
-								git clone <?=$git_url?> 
-							</span>
-						</p>
-						<p>
-							Existierendes Verzeichnis:<br />
-							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-							<span class="code">
-								git init<br />
-								git remote add origin <?=$git_url?><br />
-								git add .<br />
-								git commit -m "Initial commit"<br />
-								git push -u origin master
-							</span>
-						</p>
-						<p>
-							Existierendes lokales Git Repository:<br />
-							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-							<span class="code">
-								git remote add origin <?=$git_url?><br />
-								git push -u origin --all<br />
-								git push -u origin --tags
-							</span>
-						</p>
-<?php
+			show_empty_git_help();
 		}
 		else {
 			$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count;");
@@ -479,4 +547,3 @@ else {
 <?php
 show_footer();
 ?>
-

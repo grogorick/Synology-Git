@@ -1,0 +1,18 @@
+#!/bin/sh
+
+idx=0
+
+while read key 
+do
+	# Place the key in a temporary file
+	echo "$key" > tmp_keyfile
+	
+	# Generate a fingerprint
+	fingerprint=$(ssh-keygen -lf tmp_keyfile)
+	
+	idx=$((idx+1))
+
+	echo $idx: $fingerprint
+done < .ssh/authorized_keys
+rm tmp_keyfile
+
