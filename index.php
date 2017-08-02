@@ -112,6 +112,13 @@ function show_header() {
 			.existing_repos > tbody > tr > td {
 				padding: 5px 20px;
 			}
+			.commits td {
+				padding-left: 20px;
+			}
+			.commits td:nth-child(n+2) {
+				color: gray;
+			}
+			
 		</style>
 	</head>
 	<body>
@@ -169,6 +176,10 @@ if (!isset($_SESSION["auth"])) {
 $_SESSION['auth'] = time();
 
 
+
+function lines($str) {
+	return array_filter(explode("\n", $str));
+}
 
 function shell($cmd) {
 	$ret = shell_exec($cmd);
@@ -509,9 +520,9 @@ else {
 		else {
 			$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count;");
 			$num_latest_commits = 3;
-			$log = explode("\n", shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --source --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)';"));
-			$branches = explode("\n", shell(cd_git . "cd $git_dir;" . "git branch;"));
-			$tags = explode("\n", shell(cd_git . "cd $git_dir;" . "git tag;"));
+			$log = lines(shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --source --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)';"));
+			$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch;"));
+			$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag;"));
 ?>
 						<p>
 							<span class="code">git clone <?=$git_url?></span>
@@ -530,18 +541,23 @@ else {
 						</p>
 						<p>
 							<?=sipl($num_commits, "Commit", "Commits")?>:
-							<span class="indented">
+							<table class="commits">
 <?php
 			foreach ($log as &$commit) {
 				$commit = preg_split("/\e\\[(\\d;)?(\\d){0,2}m/", $commit, -1, PREG_SPLIT_NO_EMPTY);
-				$commit = $commit[4] . "<span style='color: gray;'> &nbsp; &mdash; &nbsp; " . str_replace("- ", "", $commit[6]) . " &nbsp; " . $commit[2] . " &nbsp; " . $commit[7] . " &nbsp; " . $commit[0] . "</span>";
-			}
-			echo 
-"								" . implode("<br />\n" . 
-"								", $log) . "\n";
 ?>
-								<?=$num_commits > $num_latest_commits ? "<br />..." : ""?> 
-							</span>
+								<tr>
+									<td><?=$commit[4]?></td>
+									<td><?=str_replace("- ", "", $commit[6])?></td>
+									<td><?=$commit[2]?></td>
+									<td><?=$commit[7]?></td>
+									<td><?=$commit[0]?></td>
+								</tr>
+<?php
+			}
+?>
+								<tr><td><?=$num_commits > $num_latest_commits ? "..." : ""?></td></tr>
+							</table>
 						</p>
 <?php
 		}
