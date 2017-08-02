@@ -351,7 +351,7 @@ if (isset($_POST["action"])) {
 		}
 		else {
 			$git_dir = escapeshellarg($git_name_create . ".git");
-			$create_git_description = trim(strip_tags($_POST["git_description"]));
+			$create_git_description = escapeshellarg(trim(strip_tags($_POST["git_description"])));
 			echo 
 "		" . msg("Neues Git Repository wird erstellt... <b>$git_name_create</b><br />" . 
 				"<i>" . shell(cd_git . "mkdir $git_dir;" . "cd $git_dir;" . "git init --bare --shared;" . "echo $create_git_description > description;") . "</i>");
@@ -371,12 +371,12 @@ if (isset($_POST["action"])) {
 			$git_dir_rename = escapeshellarg($git_name_rename . ".git");
 			echo 
 "		" . msg("Git Repository <b>$git_name</b> wird in <b>$git_name_rename</b> umbenannt...<br />" . 
-				"<i>" . cd_git . "mv $git_dir $git_dir_rename;" . shell(cd_git . "mv $git_dir $git_dir_rename;") . "</i>");
+				"<i>" . shell(cd_git . "mv $git_dir $git_dir_rename;") . "</i>");
 		}
 	}
 	else if ($_POST["action"] === "edit_git_descrption") {
 		$git_name_description = $_POST["git_name"];
-		$git_description = trim($_POST["git_description_new"]);
+		$git_description = escapeshellarg(trim(strip_tags($_POST["git_description_new"])));
 		$git_dir = escapeshellarg($git_name_description . ".git");
 		echo 
 "		" . msg("Beschreibung des Git Repositories  <b>$git_name_description</b> wird geändert...<br />" . 
@@ -509,7 +509,7 @@ else {
 							Existierendes online Git Repository:<br />
 							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 							<span class="code">
-								git remote remove origin<br />
+								git remote rename origin old<br />
 								git remote add origin <?=$git_url?><br />
 								git push -u origin --all<br />
 								git push -u origin --tags
