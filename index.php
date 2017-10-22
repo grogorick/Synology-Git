@@ -379,15 +379,28 @@ if (isset($_POST["action"])) {
 		$git_description = escapeshellarg(trim(strip_tags($_POST["git_description_new"])));
 		$git_dir = escapeshellarg($git_name_description . ".git");
 		echo 
-"		" . msg("Beschreibung des Git Repositories  <b>$git_name_description</b> wird geändert...<br />" . 
-				"<i>" . shell(cd_git . "cd $git_dir;" . "echo $git_description > description;") . "</i>");
+"		" . msg("Beschreibung des Git Repositories <b>$git_name_description</b> wird geändert...<br />" . 
+			"<i>" . shell(cd_git . "cd $git_dir;" . "echo $git_description > description;") . "</i>");
 	}
 	else if ($_POST["action"] === "delete_git") {
 		$git_name = $_POST["git_name"];
 		$git_dir = escapeshellarg($git_name . ".git");
 		echo 
 "		" . msg("Git Repository wird gelöscht... <b>$git_name</b><br />" . 
-				"<i>" . shell(cd_git . "rm -r $git_dir;") . "</i>");
+			"<i>" . shell(cd_git . "rm -r $git_dir;") . "</i>");
+	}
+	else if ($_POST["action"] === "allow_force_push") {
+		$git_name = $_POST["git_name"];
+		$git_dir = escapeshellarg($git_name . ".git");
+		if ("yes" === $_POST["action_value"]) {
+			echo 
+"		" . msg("Force push wird erlaubt... <b>$git_name</b><br />" . 
+				"<i>" . shell(cd_git . "cd $git_dir;" . "git config --local receive.denynonfastforwards false") . "</i>");
+		} else {
+			echo 
+"		" . msg("Force push wird verboten... <b>$git_name</b><br />" . 
+				"<i>" . shell(cd_git . "cd $git_dir;" . "git config --local --unset receive.denynonfastforwards") . "</i>");
+		}
 	}
 }
 ?>
@@ -523,6 +536,7 @@ else {
 			$log = lines(shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --source --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)';"));
 			$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch;"));
 			$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag;"));
+			$allow_force_push = preg_match("/=false$/i", shell(cd_git . "cd $git_dir;" . "git config --local -l | grep -i receive.denynonfastforwards"));
 ?>
 						<p>
 							<span class="code">git clone <?=$git_url?></span>
@@ -559,7 +573,29 @@ else {
 								<tr><td><?=$num_commits > $num_latest_commits ? "..." : ""?></td></tr>
 							</table>
 						</p>
+						Erlaube <i>force push</i>: &nbsp; 
 <?php
+			if ($allow_force_push) {
+?>
+						Ja &nbsp; 
+						<form action="" method="post" style="display: inline-block;">
+							<input type="hidden" name="action" value="allow_force_push" />
+							<input type="hidden" name="action_value" value="no" />
+							<input type="hidden" name="git_name" value="<?=$git_name?>" />
+							<input type="submit" value="Verbieten" title="Git Repository löschen" class="button" />
+						</form>
+<?php
+			} else {
+?>
+						Nein &nbsp; 
+						<form action="" method="post" style="display: inline-block;">
+							<input type="hidden" name="action" value="allow_force_push" />
+							<input type="hidden" name="action_value" value="yes" />
+							<input type="hidden" name="git_name" value="<?=$git_name?>" />
+							<input type="submit" value="Erlauben" title="Git Repository löschen" class="button" />
+						</form>
+<?php
+			}
 		}
 ?>
 					</td>
