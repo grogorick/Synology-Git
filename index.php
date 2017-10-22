@@ -9,6 +9,13 @@ Required Apps:
 
 
 
+if (isset($_GET["phpinfo"])) {
+	phpinfo();
+	exit;
+}
+
+
+
 define("CONFIG_LOGIN_USER", "***REMOVED***");
 define("CONFIG_LOGIN_PASS_MD5", "***REMOVED***");
 
@@ -27,6 +34,10 @@ function show_header() {
 		<style>
 			section {
 				padding-top: 20px;
+			}
+			div {
+				margin: 0px;
+				padding: 0px;
 			}
 			h1 {
 				color: #666;
@@ -63,6 +74,8 @@ function show_header() {
 				border: 0px;
 				height: 1px;
 				background: #ddd;
+				margin-top: 20px;
+				margin-bottom: 20px;
 			}
 			.button {
 				background: transparent;
@@ -80,6 +93,12 @@ function show_header() {
 				display: inline-block;
 				border: 1px solid #ddd;
 				padding: 10px 30px;
+			}
+			.inline-code {
+				font-family: consolas;
+				font-size: 80%;
+				padding-left: 20px;
+				padding-right: 20px;
 			}
 			.code {
 				font-family: consolas;
@@ -109,11 +128,19 @@ function show_header() {
 			.modified {
 				background: #ffb;
 			}
-			.existing_repos > tbody > tr > td {
+			.break-lines {
+				word-wrap: break-word;
+			}
+			.max-width-column {
+				width: 900px;
+				max-width: 900px;
+			}
+			.table_padding > tbody > tr > td {
 				padding: 5px 20px;
 			}
 			.commits td {
 				padding-left: 20px;
+				padding-top: 5px;
 			}
 			.commits td:nth-child(n+2) {
 				color: gray;
@@ -153,7 +180,7 @@ if (!isset($_SESSION["auth"])) {
 ?>
 		<section>
 			<form action="" method="post">
-				<input type="text" name="user" placeholder="Nutzer" />
+				<input type="text" name="user" placeholder="Nutzer" autofocus />
 				<input type="password" name="pass" placeholder="Passwort" />
 				<input type="submit" value="&rarr;" class="button" />
 			</form>
@@ -193,6 +220,7 @@ define("ls", "ls -1;");
 define("pwd", "pwd;");
 define("cd_git", "cd " . CONFIG_GIT_BASE_PATH . ";");
 define("count_files", "ls -1 | wc -l;");
+define("ssh_git", "ssh git@localhost ");
 
 
 
@@ -226,12 +254,11 @@ show_header();
 			<a href="/?logout" class="button">ausloggen</a>
 			
 			<span class="button" style="float: right;" 
-				onclick="document.getElementById('long_setup_instructions').classList.add('hidden'); 
-						document.getElementById('short_setup_instructions').classList.toggle('hidden');">
+				onclick="document.getElementById('synology_setup_instructions').classList.toggle('hidden');">
 				Synology NAS Einrichtung
 			</span>
 			<span class="button" style="float: right;" 
-				onclick="document.getElementById('public_key_instructions').classList.toggle('hidden');">
+				onclick="document.getElementById('public_key_management').classList.toggle('hidden');">
 				Public Keys
 			</span>
 			<hr />
@@ -239,91 +266,161 @@ show_header();
 
 		
 		
-		<section id="short_setup_instructions" class="hidden">
-			<h1>Einrichtung</h1>
-			<ul>
-				<li>
-					Erstelle einen neuen <i>Gemeinsamen Ordner</i> <b>git</b> und gib der Gruppe <i>http</i> die Berechtigungen <i>Lesen/Schreiben</i>.
-				</li>
-				<li>
-					Erstelle einen neuen <i>Benutzer</i> <b>git</b> und füge ihn der Gruppe <i>http</i> zu.
-				</li>
-				<li>
-					Dem Benutzer in der <i>Git Server</i> App den Zugriff für den Nutzer <b>git</b> erlauben.
-				</li>
-			</ul>
-			
-			<span class="button" 
-				onclick="document.getElementById('short_setup_instructions').classList.add('hidden'); 
-						document.getElementById('long_setup_instructions').classList.remove('hidden');">detaillierte Anleitung anzeigen</span>
-			<hr />
-		</section>
-		
-		<section id="long_setup_instructions" class="hidden">
-			<h1>Einrichtung</h1><br />
-			<br />
-			Zuerst wird ein Basisordner benötigt, in dem alle Git-Verzeichnisse angelegt werden sollen:
-			<ul>
-				<li>In der App <i>Systemsteuerung</i> die Kategorie <i>Gemeinsamer Ordner</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+		<div id="synology_setup_instructions" class="hidden">
+			<section id="synology_setup_instructions_short">
+				<h1>Einrichtung</h1>
 				<ul>
-					<li>Name: <b>git</b></li>
-					<li>[ &nbsp; ] Verbergen sie diesen gemenisamen Ordner unter "Netzwerkumgebung"</li>
-					<li>[&check;] Unterordner und Dateien vor Benutzern ohne Berechtigungen ausblenden</li>
-					<li>[ &nbsp; ] Papierkorb aktivieren</li>
-					<li>[ &nbsp; ] Diesen gemeinsamen Ordner verschlüsseln</li>
+					<li>
+						Erstelle einen neuen <i>Gemeinsamen Ordner</i> <b>git</b> und gib der Gruppe <i>http</i> die Berechtigungen <i>Lesen/Schreiben</i>.
+					</li>
+					<li>
+						Erstelle einen neuen <i>Benutzer</i> <b>git</b> und füge ihn der Gruppe <i>http</i> zu.
+					</li>
+					<li>
+						Dem Benutzer in der <i>Git Server</i> App den Zugriff für den Nutzer <b>git</b> erlauben.
+					</li>
 				</ul>
-				<li><i>OK</i>.</li>
-			</ul>
-			Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
-			Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
-			<ul>
-				<li>Filter von <i>Lokale Benutzer</i> zu <i>Lokale Gruppen</i> wechseln.</li>
-				<li>Der Gruppe <i>http</i> die Berechtigungen zum <i>Lesen/Schreiben</i> [&check;] aktivieren.</li>
-				<li><i>OK</i>.</li>
-			</ul>
+				
+				<span class="button" 
+					onclick="document.getElementById('synology_setup_instructions_short').classList.add('hidden'); 
+							document.getElementById('synology_setup_instructions_long').classList.remove('hidden');">detaillierte Anleitung anzeigen</span>
+				<hr />
+			</section>
 			
-			Nun wird ein Nutzer für den externen Zugriff per Git benötigt:
-			<ul>
-				<li>In der App <i>Systemsteuering</i> die Kategorie <i>Benutzer</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+			<section id="synology_setup_instructions_long" class="hidden">
+				<h1>Einrichtung</h1>
+				<br />
+				Zuerst wird ein Basisordner benötigt, in dem alle Git-Verzeichnisse angelegt werden sollen:
 				<ul>
-					<li>Name: <b>git</b></li>
-					<li>[&check;] Lassen Sie nicht zu, dass der Benutze das Konto-Passwort ändern kann.</li>
+					<li>In der App <i>Systemsteuerung</i> die Kategorie <i>Gemeinsamer Ordner</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+					<ul>
+						<li>Name: <b>git</b></li>
+						<li>[ &nbsp; ] Verbergen sie diesen gemenisamen Ordner unter "Netzwerkumgebung"</li>
+						<li>[&check;] Unterordner und Dateien vor Benutzern ohne Berechtigungen ausblenden</li>
+						<li>[ &nbsp; ] Papierkorb aktivieren</li>
+						<li>[ &nbsp; ] Diesen gemeinsamen Ordner verschlüsseln</li>
+					</ul>
+					<li><i>OK</i>.</li>
 				</ul>
-				<li><i>Weiter</i></li>
-				<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> [&check;] aktivieren.</li>
-				<li><i>Weiter</i></li>
-				<li>Im folgenden Fenster <i>Berechtigungen für gemeinsame Ordner zuweisen</i> für den gemeinsamen Ordner <i>web</i> die Spalte <i>Kein Zugriff</i> [&check;] aktivieren.</li>
-				<li><i>2 x Weiter</i></li>
-				<li>Im folgenden Fenster <i>Anwendungsberechtigungen zuweisen</i> für alle Anwendungen <i>Verweigern</i> [&check;] aktivieren.</li>
-				<li><i>2 x Weiter</i></li>
-				<li><i>Übernehmen</i></li>
-			</ul>
+				Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
+				Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
+				<ul>
+					<li>Filter von <i>Lokale Benutzer</i> zu <i>Lokale Gruppen</i> wechseln.</li>
+					<li>Der Gruppe <i>http</i> die Berechtigungen zum <i>Lesen/Schreiben</i> [&check;] aktivieren.</li>
+					<li><i>OK</i>.</li>
+				</ul>
+				
+				Nun wird ein Nutzer für den externen Zugriff per Git benötigt:
+				<ul>
+					<li>In der App <i>Systemsteuering</i> die Kategorie <i>Benutzer</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
+					<ul>
+						<li>Name: <b>git</b></li>
+						<li>[&check;] Lassen Sie nicht zu, dass der Benutze das Konto-Passwort ändern kann.</li>
+					</ul>
+					<li><i>Weiter</i></li>
+					<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> [&check;] aktivieren.</li>
+					<li><i>Weiter</i></li>
+					<li>Im folgenden Fenster <i>Berechtigungen für gemeinsame Ordner zuweisen</i> für den gemeinsamen Ordner <i>web</i> die Spalte <i>Kein Zugriff</i> [&check;] aktivieren.</li>
+					<li><i>2 x Weiter</i></li>
+					<li>Im folgenden Fenster <i>Anwendungsberechtigungen zuweisen</i> für alle Anwendungen <i>Verweigern</i> [&check;] aktivieren.</li>
+					<li><i>2 x Weiter</i></li>
+					<li><i>Übernehmen</i></li>
+				</ul>
+				
+				Zuletzt muss der externe Zugriff per Git für diesen Nutzer noch zugelassen werden:
+				<ul>
+					<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
+					<li><i>Übernehmen</i></li>
+				</ul>
+				
+				<span class="button" 
+					onclick="document.getElementById('synology_setup_instructions_long').classList.add('hidden'); 
+							document.getElementById('synology_setup_instructions_short').classList.remove('hidden');">kurze Anleitung anzeigen</span>
+				<hr />
+			</section>
+		</div>
+		
+		
+
+		<div id="public_key_management" class="<?=(isset($_POST["action"]) && ($_POST["action"] === "add_key" || $_POST["action"] === "delete_key")) ? "" : "hidden"?>">
+			<section>
+				Neuen Public Key hinzufügen: &nbsp; 
+				<form action="" method="post">
+						<input type="hidden" name="action" value="add_key" />
+					<input type="text" name="key_add" placeholder="Public Key" style="width: 800px;" /> &nbsp;
+					<input type="submit" value="hinzufügen" class="button" />
+				</form>
+			</section>
+		
+		
+		
+<?php
+if (isset($_POST["action"])) {
+	if ($_POST["action"] === "add_key") {
+		$key_add = escapeshellarg(trim(strip_tags($_POST["key_add"])));
+		$key_user = substr($key_add, strrpos($key_add, " ") + 1);
+		$key_add = escapeshellarg($key_add);
+		echo 
+"		" . msg("Neuen Public Key hinzufügen... <b>$key_user</b><br />" . 
+			"<i>" . shell(ssh_git . "add_key $key_add") . "</i>");
+	}
+	else if ($_POST["action"] === "delete_key") {
+		$key_idx = $_POST["key_idx"];
+		$key_user = $_POST["key_user"];
+		echo 
+"		" . msg("Public Key wird gelöscht... <b>$key_user</b><br />" . 
+				"<i>" . shell(ssh_git . "delete_key $key_idx") . "</i>");
+	}
+}
+?>
 			
-			Zuletzt muss der externe Zugriff per Git für diesen Nutzer noch zugelassen werden:
-			<ul>
-				<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
-				<li><i>Übernehmen</i></li>
-			</ul>
 			
-			<span class="button" 
-				onclick="document.getElementById('long_setup_instructions').classList.add('hidden'); 
-						document.getElementById('short_setup_instructions').classList.remove('hidden');">kurze Anleitung anzeigen</span>
-			<hr />
-		</section>
-		
-		
-		
-		<section id="public_key_instructions" class="hidden">
-			<h1>Public Keys</h1>
-			<p>
-				Mithilfe von Public Keys können Befehle wie <i>git pull</i> oder <i>git push</i> ohne Eingabe von Nutzernamen und Passwort durchgeführt werden.<br />
-				Verbinde dich dazu per <i>SSH</i> auf diesen Server:<br />
-				<span class="code">
-					ssh <?=CONFIG_SSH_USER . "@" . CONFIG_SERVER . " -p " . CONFIG_SSH_PORT?>
-				</span>
-			</p>
-			<hr />
-		</section>
+			
+			<section>
+			<h1>Public Keys:</h1>
+				<table class="table_padding">
+<?php
+$keys = lines(shell(ssh_git . "list_keys"));
+$second_row = true;
+foreach ($keys as $idx => $key) {
+	$key = explode(" ", $key);
+	$row_code_second = ($second_row = !$second_row) ? " class=\"second_row\"" : "";
+?>
+					<tr<?=$row_code_second?> 
+						onclick="document.getElementById('key_full_<?=$idx?>').classList.toggle('hidden');">
+						<td class="clickable"><?=/* User@Machine */$key[3]?></td>
+						<td class="clickable"><?=/* Fingerprint */$key[2]?></td>
+						<td class="clickable"><?=/* Encryption */$key[4]?></td>
+						<td style="text-align: right;">
+							<form action="" method="post">
+								<input type="hidden" name="action" value="delete_key" />
+								<input type="hidden" name="key_idx" value="<?=($idx + 1)?>" />
+								<input type="hidden" name="key_user" value="<?=$key[3]?>" />
+								<input type="submit" value="&cross;" title="Public Key löschen" class="button" 
+									onclick="return confirm('Den Public Key von `<?=$key[3]?>` wirklich löschen?');" />
+							</form>
+						</td>
+					</tr>
+					<tr id="key_full_<?=$idx?>" class="hidden">
+						<td></td>
+						<td colspan="3">
+							<div class="max-width-column break-lines">
+								<?=shell(ssh_git . "show_key " . ($idx + 1));?>
+							</div>
+						</td>
+					</tr>
+<?php
+}
+?>
+				</table>
+			</section>
+			
+			<section>
+				Mithilfe von Public Keys können Befehle wie <i>git pull</i> oder <i>git push</i> ohne Eingabe von Nutzernamen und Passwort durchgeführt werden. 
+				(<span class="inline-code">ssh <?=CONFIG_SSH_USER . "@" . CONFIG_SERVER . " -p " . CONFIG_SSH_PORT?></span>)
+				<hr />
+			</section>
+		</div>
 		
 		
 		
@@ -354,7 +451,7 @@ if (isset($_POST["action"])) {
 			$create_git_description = escapeshellarg(trim(strip_tags($_POST["git_description"])));
 			echo 
 "		" . msg("Neues Git Repository wird erstellt... <b>$git_name_create</b><br />" . 
-				"<i>" . shell(cd_git . "mkdir $git_dir;" . "cd $git_dir;" . "git init --bare --shared;" . "echo $create_git_description > description;") . "</i>");
+				"<i>" . shell(cd_git . "mkdir $git_dir;" . "cd $git_dir;" . "git init --bare --shared;" . "echo $create_git_description > description") . "</i>");
 		}
 	}
 	else if ($_POST["action"] === "rename_git") {
@@ -371,7 +468,7 @@ if (isset($_POST["action"])) {
 			$git_dir_rename = escapeshellarg($git_name_rename . ".git");
 			echo 
 "		" . msg("Git Repository <b>$git_name</b> wird in <b>$git_name_rename</b> umbenannt...<br />" . 
-				"<i>" . shell(cd_git . "mv $git_dir $git_dir_rename;") . "</i>");
+				"<i>" . shell(cd_git . "mv $git_dir $git_dir_rename") . "</i>");
 		}
 	}
 	else if ($_POST["action"] === "edit_git_descrption") {
@@ -380,14 +477,14 @@ if (isset($_POST["action"])) {
 		$git_dir = escapeshellarg($git_name_description . ".git");
 		echo 
 "		" . msg("Beschreibung des Git Repositories  <b>$git_name_description</b> wird geändert...<br />" . 
-				"<i>" . shell(cd_git . "cd $git_dir;" . "echo $git_description > description;") . "</i>");
+				"<i>" . shell(cd_git . "cd $git_dir;" . "echo $git_description > description") . "</i>");
 	}
 	else if ($_POST["action"] === "delete_git") {
 		$git_name = $_POST["git_name"];
 		$git_dir = escapeshellarg($git_name . ".git");
 		echo 
 "		" . msg("Git Repository wird gelöscht... <b>$git_name</b><br />" . 
-				"<i>" . shell(cd_git . "rm -r $git_dir;") . "</i>");
+				"<i>" . shell(cd_git . "rm -r $git_dir") . "</i>");
 	}
 }
 ?>
@@ -408,13 +505,13 @@ if (empty($git_repos)) {
 }
 else {
 ?>
-			<table class="existing_repos" style="margin-top: 10px;">
+			<table class="table_padding" style="margin-top: 10px;">
 <?php
 	$second_row = true;
 	foreach ($git_repos as $git_name) {
 		$git_dir = $git_name . ".git";
 		$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
-		$git_description = shell(cd_git . "cat $git_dir/description;");
+		$git_description = shell(cd_git . "cat $git_dir/description");
 		$is_empty = shell(cd_git . "cd $git_dir/refs/heads;" . count_files) == "0";
 		
 		$row_code_second = ($second_row = !$second_row) ? " second_row" : "";
@@ -475,93 +572,95 @@ else {
 				<tr class="hidden<?=$row_code?>" id="git_details_<?=$git_name?>">
 					<td></td>
 					<td colspan="2">
+						<div class="max-width-column">
 <?php
 		if ($is_empty) {
 ?>
-						<p>
-							Neues/leeres Projekt:<br />
-							<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
-							<span class="code">
-								git clone <?=$git_url?> 
-							</span>
-						</p>
-						<p>
-							Existierendes Verzeichnis:<br />
-							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-							<span class="code">
-								git init<br />
-								git remote add origin <?=$git_url?><br />
-								git add .<br />
-								git commit -m "Initial commit"<br />
-								git push -u origin master
-							</span>
-						</p>
-						<p>
-							Existierendes lokales Git Repository:<br />
-							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-							<span class="code">
-								git remote add origin <?=$git_url?><br />
-								git push -u origin --all<br />
-								git push -u origin --tags
-							</span>
-						</p>
-						<p>
-							Existierendes online Git Repository:<br />
-							<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-							<span class="code">
-								git remote rename origin old<br />
-								git remote add origin <?=$git_url?><br />
-								git push -u origin --all<br />
-								git push -u origin --tags
-							</span>
-						</p>
+							<p>
+								Neues/leeres Projekt:<br />
+								<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
+								<span class="code">
+									git clone <?=$git_url?> 
+								</span>
+							</p>
+							<p>
+								Existierendes Verzeichnis:<br />
+								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+								<span class="code">
+									git init<br />
+									git remote add origin <?=$git_url?><br />
+									git add .<br />
+									git commit -m "Initial commit"<br />
+									git push -u origin master
+								</span>
+							</p>
+							<p>
+								Existierendes lokales Git Repository:<br />
+								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+								<span class="code">
+									git remote add origin <?=$git_url?><br />
+									git push -u origin --all<br />
+									git push -u origin --tags
+								</span>
+							</p>
+							<p>
+								Existierendes online Git Repository:<br />
+								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
+								<span class="code">
+									git remote rename origin old<br />
+									git remote add origin <?=$git_url?><br />
+									git push -u origin --all<br />
+									git push -u origin --tags
+								</span>
+							</p>
 <?php
 		}
 		else {
-			$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count;");
+			$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
 			$num_latest_commits = 3;
-			$log = lines(shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --source --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)';"));
-			$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch;"));
-			$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag;"));
+			$log = lines(shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --date-order --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)'"));
+			$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch"));
+			$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag"));
 ?>
-						<p>
-							<span class="code">git clone <?=$git_url?></span>
-						</p>
-						<p>
-							<?=sipl(count($branches), "Branch", "Branches")?>:
-							<span class="indented">
-								<?=implode("<br />", $branches)?> 
-							</span>
-						</p>
-						<p>
-							<?=sipl(count($tags), "Tag", "Tags")?>:
-							<span class="indented">
-								<?=implode("<br />", $tags)?> 
-							</span>
-						</p>
-						<p>
-							<?=sipl($num_commits, "Commit", "Commits")?>:
-							<table class="commits">
+							<p>
+								<span class="code">git clone <?=$git_url?></span>
+							</p>
+							<p>
+								<?=sipl(count($branches), "Branch", "Branches")?>:
+								<span class="indented">
+									<?=implode("<br />", $branches)?> 
+								</span>
+							</p>
+							<p>
+								<?=sipl(count($tags), "Tag", "Tags")?>:
+								<span class="indented">
+									<?=implode("<br />", $tags)?> 
+								</span>
+							</p>
+							<p>
+								<?=sipl($num_commits, "Commit", "Commits")?>:
+								<table class="commits">
 <?php
 			foreach ($log as &$commit) {
 				$commit = preg_split("/\e\\[(\\d;)?(\\d){0,2}m/", $commit, -1, PREG_SPLIT_NO_EMPTY);
 ?>
-								<tr>
-									<td><?=$commit[4]?></td>
-									<td><?=str_replace("- ", "", $commit[6])?></td>
-									<td><?=$commit[2]?></td>
-									<td><?=$commit[7]?></td>
-									<td><?=$commit[0]?></td>
-								</tr>
+									<tr>
+										<td><?=$commit[4 /* message */]?></td>
+										<td><?=str_replace("- ", "", $commit[6 /* name */])?></td>
+										<td><?=$commit[2 /* date */]?></td>
+										<td><?=$commit[7 /* branch */]?></td>
+										<td><?=$commit[0 /* hash */]?></td>
+									</tr>
 <?php
 			}
 ?>
-								<tr><td><?=$num_commits > $num_latest_commits ? "..." : ""?></td></tr>
-							</table>
-						</p>
+									<tr><td><?=$num_commits > $num_latest_commits ? "..." : ""?></td></tr>
+								</table>
+							</p>
 <?php
 		}
 ?>
+						</div>
 					</td>
 				</tr>
 			
