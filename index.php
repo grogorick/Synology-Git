@@ -9,13 +9,6 @@ Required Apps:
 
 
 
-if (isset($_GET["phpinfo"])) {
-	phpinfo();
-	exit;
-}
-
-
-
 define("CONFIG_LOGIN_USER", "***REMOVED***");
 define("CONFIG_LOGIN_PASS_MD5", "***REMOVED***");
 
@@ -23,6 +16,236 @@ define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
 define("CONFIG_SSH_USER", "gituser");
 define("CONFIG_SSH_PORT", 22);
 define("CONFIG_GIT_BASE_PATH", "/volume1/git/");
+
+define("CONFIG_SESSION_TIMEOUT", 1800);
+define("CONFIG_NUM_LATEST_COMMITS", 5);
+
+
+
+function shell($cmd) {
+	$ret = shell_exec($cmd);
+	if (substr($ret, -1) === "\n") {
+		$ret = substr($ret, 0, -1);
+	}
+	return $ret;
+}
+
+define("ls", "ls -1;");
+define("pwd", "pwd;");
+define("cd_git", "cd " . CONFIG_GIT_BASE_PATH . ";");
+define("count_files", "ls -1 | wc -l;");
+define("ssh_git", "ssh git@localhost ");
+
+function lines($str) {
+	return array_filter(explode("\n", $str));
+}
+
+function readable_filesize($filesize) {
+	for ($i = 0; ($filesize / 1024) > 0.9; $i++, $filesize /= 1024) {}
+	return round($filesize, 2 /* precision */).['B','kB','MB','GB','TB','PB','EB','ZB','YB'][$i];
+}
+
+
+
+if (isset($_GET["phpinfo"])) {
+	phpinfo();
+	exit;
+}
+
+if (isset($_GET["request"])) {
+	session_start();
+	if (isset($_SESSION['auth']) && time() - $_SESSION['auth'] <= CONFIG_SESSION_TIMEOUT) {
+		switch ($_GET["request"]) {
+			
+			case "list-public-keys": {
+				$keys = lines(shell(ssh_git . "list_keys"));
+				$second_row = true;
+				foreach ($keys as $idx => $key) {
+					$key = explode(" ", $key);
+					$row_code_second = ($second_row = !$second_row) ? " class=\"second_row\"" : "";
+?>
+					<tr<?=$row_code_second?> 
+						onclick="document.getElementById('key_full_<?=$idx?>').classList.toggle('hidden');">
+						<td class="clickable"><?=/* User@Machine */$key[3]?></td>
+						<td class="clickable"><?=/* Fingerprint */$key[2]?></td>
+						<td class="clickable"><?=/* Encryption */$key[4]?></td>
+						<td style="text-align: right;">
+							<form action="" method="post">
+								<input type="hidden" name="action" value="delete_key" />
+								<input type="hidden" name="key_idx" value="<?=($idx + 1)?>" />
+								<input type="hidden" name="key_user" value="<?=$key[3]?>" />
+								<input type="submit" value="&cross;" title="Public Key löschen" class="button" 
+									onclick="return confirm('Den Public Key von `<?=$key[3]?>` wirklich löschen?');" />
+							</form>
+						</td>
+					</tr>
+					<tr id="key_full_<?=$idx?>" class="hidden">
+						<td></td>
+						<td colspan="3">
+							<div class="max-width-column break-lines">
+								<?=shell(ssh_git . "show_key " . ($idx + 1));?>
+							</div>
+						</td>
+					</tr>
+<?php
+				}
+			} break;
+			
+			case "repo-details": {
+				$git_name = urldecode($_GET["git_name"]);
+				$git_dir = $git_name . ".git";
+				$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
+				
+				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
+				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . CONFIG_NUM_LATEST_COMMITS . " --graph --oneline --branches --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
+				$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch"));
+				$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag"));
+				$allow_force_push = preg_match("/=false$/i", shell(cd_git . "cd $git_dir;" . "git config --local -l | grep -i receive.denynonfastforwards"));
+?>
+				<p>
+					<span class="code">git clone <?=$git_url?></span>
+				</p>
+				<p>
+					<?=sipl(count($branches), "Branch", "Branches")?>:
+					<span class="indented">
+<?php
+				foreach ($branches as $i => $branch_disp) {
+					if ($branch_disp[0] === "*")
+						$branch = substr($branch_disp, 2);
+					else
+						$branch = $branch_disp;
+					$responseSpanId = "file_browser_" . $git_name . "_" . $branch;
+?>
+						<?=$i ? "<br />" : ""?>
+						<span class="clickable" onclick="toggleFileBrowser(arguments[0], '<?=$git_name?>', '<?=$branch?>:', '<?=$responseSpanId?>')"><?=$branch_disp?></span>
+						<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
+<?php
+				}
+?>
+					</span>
+				</p>
+				<p>
+					<?=sipl(count($tags), "Tag", "Tags")?>:
+					<span class="indented">
+						<?=implode("<br />", $tags)?> 
+					</span>
+				</p>
+				<p>
+					<?=sipl($num_commits, "Commit", "Commits")?>:
+					<table class="commits">
+<?php
+				foreach ($log as &$commit) {
+					$commit = explode("___", $commit);
+					if (count($commit) > 1) {
+?>
+						<tr>
+							<td><?=str_replace(" ", "&nbsp;", $commit[0 /* graph */])?></td>
+							<td><?=$commit[3 /* message */]?></td>
+							<td><?=str_replace(" ", "&nbsp;", $commit[4 /* name */])?></td>
+							<td>(<?=str_replace(" ", "&nbsp;", $commit[2 /* date */])?>)</td>
+							<td><?=$commit[5 /* branch */]?></td>
+							<td><?=$commit[1 /* hash */]?></td>
+						</tr>
+<?php
+					}
+					else {
+?>
+						<tr><td><?=$commit[0 /* graph */]?></td></tr>
+<?php
+					}
+				}
+?>
+						<tr><td><?=$num_commits > CONFIG_NUM_LATEST_COMMITS ? "..." : ""?></td></tr>
+					</table>
+				</p>
+				
+				<h1 style="cursor: pointer;"
+					onclick="document.getElementById('advanced_settings_<?=$git_name?>').classList.toggle('hidden');">Erweiterte Einstellungen</h1>
+				<div id="advanced_settings_<?=$git_name?>" class="hidden" style="padding-bottom: 20px;">
+					Erlaube <i>force push</i>: &nbsp; 
+<?php
+				if ($allow_force_push) {
+?>
+					Ja &nbsp; 
+					<form action="" method="post" style="display: inline-block;">
+						<input type="hidden" name="action" value="allow_force_push" />
+						<input type="hidden" name="action_value" value="no" />
+						<input type="hidden" name="git_name" value="<?=$git_name?>" />
+						<input type="submit" value="Verbieten" title="Git Repository löschen" class="button" />
+					</form>
+<?php
+				} else {
+?>
+					Nein &nbsp; 
+					<form action="" method="post" style="display: inline-block;">
+						<input type="hidden" name="action" value="allow_force_push" />
+						<input type="hidden" name="action_value" value="yes" />
+						<input type="hidden" name="git_name" value="<?=$git_name?>" />
+						<input type="submit" value="Erlauben" title="Git Repository löschen" class="button" />
+					</form>
+<?php
+				}
+?>
+				</div>
+<?php
+			} break;
+			
+			case "file-browser": {
+				$git_name = urldecode($_GET["git_name"]);
+				$git_dir = $git_name . ".git";
+				$ref = urldecode($_GET["ref"]);
+				$files = lines(shell(cd_git . "cd $git_dir;" . "git ls-tree -l --abbrev $ref"));
+				foreach ($files as $i => $file) {
+					$f = preg_split("/\\s+/", $file);
+					if ($f[1] === "blob" /* file */) {
+						$responseSpanId = "file_browser_" . $git_name . "_" . $ref . $f[4];
+						$filesize = readable_filesize(intval($f[3]));
+?>
+							<span class="clickable" onclick="toggleFileContent(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4]?>', '<?=$responseSpanId?>')"><?=$f[4]?><i>(<?=$filesize?>)</i></span>
+							<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
+<?php
+					}
+					else if ($f[1] === "tree" /* directory */) {
+						$responseSpanId = "file_browser_" . $git_name . "_" . $ref . $f[4] . "/";
+?>
+							<span class="clickable" onclick="toggleFileBrowser(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4] . "/"?>', '<?=$responseSpanId?>')"><?=$f[4]?></span>
+							<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
+<?php
+					}
+					else { /* this should not happen */
+?>
+							<span style="color: red;"><?=$file?></span>
+<?php
+					}
+				}
+			} break;
+			
+			case "file-content": {
+				$git_name = urldecode($_GET["git_name"]);
+				$git_dir = $git_name . ".git";
+				$ref = urldecode($_GET["ref"]);
+				$file_content = shell(cd_git . "cd $git_dir;" . "git show $ref");
+				$file_content = htmlspecialchars($file_content);
+				if ($file_content == "") {
+					$file_content = "<i class='indented'>(Dieses Dateiformat kann nicht angezeigt werden)</i>";
+				} else {
+					$file_content = explode("\n", $file_content);
+					$file_content = array_map(function($line, $n) { return "<tr><td>" . ($n + 1) . "</td><td>" . str_replace(array(" ", "\t"), array("&nbsp;", "&nbsp;&nbsp;"), $line) . "</td></tr>"; }, $file_content, array_keys($file_content));
+					$file_content = "<table class='file_content'>" . implode("", $file_content) . "</table>";
+				}
+?>
+								<?=$file_content?>
+<?php
+			} break;
+		}
+		exit;
+	}
+	else {
+		session_destroy();
+		http_response_code(404);
+		exit;
+	}
+}
 
 
 
@@ -114,7 +337,7 @@ function show_header() {
 				margin-top: 5px;
 			}
 			.hidden {
-				display: none;
+				display: none !important;
 			}
 			.clickable {
 				cursor: pointer;
@@ -142,11 +365,80 @@ function show_header() {
 				padding-left: 20px;
 				padding-top: 5px;
 			}
-			.commits td:nth-child(n+2) {
+			.commits td:nth-child(1), .commits td:nth-child(n+3) {
 				color: gray;
 			}
-			
+			.file-browser span {
+				display: block;
+			}
+			span.file-browser {
+				display: block;
+				padding-left: 10px;
+			}
+			span.file-browser > i {
+				padding-left: 20px;
+				color: gray;
+			}
+			table.file_content td:nth-child(1) {
+				padding-right: 10px;
+				border-right: 1px solid gray;
+				color: gray;
+			}
+			table.file_content td:nth-child(2) {
+				padding-left: 10px;
+			}
 		</style>
+		<script>
+			function requrest(url, responseTarget) {
+				var xhttp = new XMLHttpRequest();
+				xhttp.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+						responseTarget.innerHTML = this.responseText;
+					}
+				};
+				xhttp.open("GET", url, true);
+				xhttp.send();
+			}
+			
+			function togglePublicKeys() {
+				var keys_table = document.getElementById("public_keys_table");
+				if (keys_table.innerHTML.trim() == "") {
+					requrest("/?request=list-public-keys", keys_table);
+					keys_table.innerHTML = "<i>(lädt ...)</i>";
+				}
+				document.getElementById('public_key_management').classList.toggle('hidden');
+			}
+			
+			function toggleRepoDetails(git_name) {
+				var git_details_div = document.getElementById("git_details_" + git_name);
+				if (git_details_div.innerHTML.trim() == "") {
+					requrest("/?request=repo-details&git_name=" + encodeURI(git_name), git_details_div);
+					git_details_div.innerHTML = "<i>(lädt ...)</i>";
+				}
+				document.getElementById("git_details_row_" + git_name).classList.toggle('hidden');
+			}
+			
+			function toggleFileBrowser(event, git_name, ref, responseTargetId) {
+				event.stopPropagation();
+				var responseTarget = document.getElementById(responseTargetId);
+				if (responseTarget.innerHTML.trim() == "") {
+					requrest("/?request=file-browser&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
+					responseTarget.innerHTML = "<i>(lädt ...)</i>";
+				}
+				responseTarget.classList.toggle('hidden');
+			}
+			
+			function toggleFileContent(event, git_name, ref, responseTargetId) {
+				event.stopPropagation();
+				console.log(responseTargetId);
+				var responseTarget = document.getElementById(responseTargetId);
+				if (responseTarget.innerHTML.trim() == "") {
+					requrest("/?request=file-content&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
+					responseTarget.innerHTML = "<i>(lädt ...)</i>";
+				}
+				responseTarget.classList.toggle('hidden');
+			}
+		</script>
 	</head>
 	<body>
 <?php
@@ -163,7 +455,7 @@ function show_footer() {
 
 session_start();
 if (isset($_SESSION['auth'])) {
-	if (time() - $_SESSION['auth'] > 1800) {
+	if (time() - $_SESSION['auth'] > CONFIG_SESSION_TIMEOUT) {
 		session_unset();
 	}
 }
@@ -204,26 +496,6 @@ $_SESSION['auth'] = time();
 
 
 
-function lines($str) {
-	return array_filter(explode("\n", $str));
-}
-
-function shell($cmd) {
-	$ret = shell_exec($cmd);
-	if (substr($ret, -1) === "\n") {
-		$ret = substr($ret, 0, -1);
-	}
-	return $ret;
-}
-
-define("ls", "ls -1;");
-define("pwd", "pwd;");
-define("cd_git", "cd " . CONFIG_GIT_BASE_PATH . ";");
-define("count_files", "ls -1 | wc -l;");
-define("ssh_git", "ssh git@localhost ");
-
-
-
 function msg($text) {
 	return "<section><span class=\"message\">$text</span></section>\n";
 }
@@ -258,7 +530,7 @@ show_header();
 				Synology NAS Einrichtung
 			</span>
 			<span class="button" style="float: right;" 
-				onclick="document.getElementById('public_key_management').classList.toggle('hidden');">
+				onclick="togglePublicKeys()">
 				Public Keys
 			</span>
 			<hr />
@@ -377,41 +649,8 @@ if (isset($_POST["action"])) {
 			
 			
 			<section>
-			<h1>Public Keys:</h1>
-				<table class="table_padding">
-<?php
-$keys = lines(shell(ssh_git . "list_keys"));
-$second_row = true;
-foreach ($keys as $idx => $key) {
-	$key = explode(" ", $key);
-	$row_code_second = ($second_row = !$second_row) ? " class=\"second_row\"" : "";
-?>
-					<tr<?=$row_code_second?> 
-						onclick="document.getElementById('key_full_<?=$idx?>').classList.toggle('hidden');">
-						<td class="clickable"><?=/* User@Machine */$key[3]?></td>
-						<td class="clickable"><?=/* Fingerprint */$key[2]?></td>
-						<td class="clickable"><?=/* Encryption */$key[4]?></td>
-						<td style="text-align: right;">
-							<form action="" method="post">
-								<input type="hidden" name="action" value="delete_key" />
-								<input type="hidden" name="key_idx" value="<?=($idx + 1)?>" />
-								<input type="hidden" name="key_user" value="<?=$key[3]?>" />
-								<input type="submit" value="&cross;" title="Public Key löschen" class="button" 
-									onclick="return confirm('Den Public Key von `<?=$key[3]?>` wirklich löschen?');" />
-							</form>
-						</td>
-					</tr>
-					<tr id="key_full_<?=$idx?>" class="hidden">
-						<td></td>
-						<td colspan="3">
-							<div class="max-width-column break-lines">
-								<?=shell(ssh_git . "show_key " . ($idx + 1));?>
-							</div>
-						</td>
-					</tr>
-<?php
-}
-?>
+				<h1>Public Keys:</h1>
+				<table class="table_padding" id="public_keys_table">
 				</table>
 			</section>
 			
@@ -487,15 +726,15 @@ if (isset($_POST["action"])) {
 			"<i>" . shell(cd_git . "rm -r $git_dir;") . "</i>");
 	}
 	else if ($_POST["action"] === "allow_force_push") {
-		$git_name = $_POST["git_name"];
-		$git_dir = escapeshellarg($git_name . ".git");
+		$git_name_force_push = $_POST["git_name"];
+		$git_dir = escapeshellarg($git_name_force_push . ".git");
 		if ("yes" === $_POST["action_value"]) {
 			echo 
-"		" . msg("Force push wird erlaubt... <b>$git_name</b><br />" . 
+"		" . msg("Force push wird erlaubt... <b>$git_name_force_push</b><br />" . 
 				"<i>" . shell(cd_git . "cd $git_dir;" . "git config --local receive.denynonfastforwards false") . "</i>");
 		} else {
 			echo 
-"		" . msg("Force push wird verboten... <b>$git_name</b><br />" . 
+"		" . msg("Force push wird verboten... <b>$git_name_force_push</b><br />" . 
 				"<i>" . shell(cd_git . "cd $git_dir;" . "git config --local --unset receive.denynonfastforwards") . "</i>");
 		}
 	}
@@ -531,11 +770,12 @@ else {
 		$row_code_create = ($git_name_create === $git_name) ? " new" : "";
 		$row_code_rename = ($git_name_rename === $git_name) ? " modified" : "";
 		$row_code_description = ($git_name_description === $git_name) ? " modified" : "";
-		$row_code = $row_code_second . $row_code_create . $row_code_rename . $row_code_description;
+		$row_code_force_push = ($git_name_force_push === $git_name) ? " modified" : "";
+		$row_code = $row_code_second . $row_code_create . $row_code_rename . $row_code_description . $row_code_force_push;
 ?>
 				<tr class="<?=$row_code?>">
 					<td class="clickable" 
-						onclick="document.getElementById('git_details_<?=$git_name?>').classList.toggle('hidden');">
+						onclick="toggleRepoDetails('<?=$git_name?>')">
 						<span id="git_name_<?=$git_name?>" class="changeable" 
 							ondblclick="this.classList.toggle('hidden'); 
 										document.getElementById('git_name_edit_<?=$git_name?>').classList.toggle('hidden'); 
@@ -554,7 +794,7 @@ else {
 						</form>
 					</td>
 					<td class="clickable" 
-						onclick="document.getElementById('git_details_<?=$git_name?>').classList.toggle('hidden');">
+						onclick="toggleRepoDetails('<?=$git_name?>')">
 						<?=($is_empty ? "<i>(leer)</i> &nbsp; " : "") . "\n"?>
 						<span id="git_description_<?=$git_name?>" class="changeable" 
 							ondblclick="this.classList.toggle('hidden'); 
@@ -582,10 +822,10 @@ else {
 						</form>
 					</td>
 				</tr>
-				<tr class="hidden<?=$row_code?>" id="git_details_<?=$git_name?>">
+				<tr class="hidden<?=$row_code?>" id="git_details_row_<?=$git_name?>">
 					<td></td>
 					<td colspan="2">
-						<div class="max-width-column">
+						<div class="max-width-column" id="git_details_<?=$git_name?>">
 <?php
 		if ($is_empty) {
 ?>
@@ -627,78 +867,6 @@ else {
 								</span>
 							</p>
 <?php
-		}
-		else {
-			$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
-			$num_latest_commits = 3;
-			$log = lines(shell(cd_git . "cd $git_dir;" . "git log -$num_latest_commits --oneline --branches --all --date-order --format=format:'%C(bold blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)'"));
-			$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch"));
-			$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag"));
-			$allow_force_push = preg_match("/=false$/i", shell(cd_git . "cd $git_dir;" . "git config --local -l | grep -i receive.denynonfastforwards"));
-?>
-							<p>
-								<span class="code">git clone <?=$git_url?></span>
-							</p>
-							<p>
-								<?=sipl(count($branches), "Branch", "Branches")?>:
-								<span class="indented">
-									<?=implode("<br />", $branches)?> 
-								</span>
-							</p>
-							<p>
-								<?=sipl(count($tags), "Tag", "Tags")?>:
-								<span class="indented">
-									<?=implode("<br />", $tags)?> 
-								</span>
-							</p>
-							<p>
-								<?=sipl($num_commits, "Commit", "Commits")?>:
-								<table class="commits">
-<?php
-			foreach ($log as &$commit) {
-				$commit = preg_split("/\e\\[(\\d;)?(\\d){0,2}m/", $commit, -1, PREG_SPLIT_NO_EMPTY);
-?>
-									<tr>
-										<td><?=$commit[4 /* message */]?></td>
-										<td><?=str_replace("- ", "", $commit[6 /* name */])?></td>
-										<td><?=$commit[2 /* date */]?></td>
-										<td><?=$commit[7 /* branch */]?></td>
-										<td><?=$commit[0 /* hash */]?></td>
-									</tr>
-<?php
-			}
-?>
-									<tr><td><?=$num_commits > $num_latest_commits ? "..." : ""?></td></tr>
-								</table>
-							</p>
-							
-							<h1 style="cursor: pointer;"
-								onclick="document.getElementById('advanced_settings_<?=$git_name?>').classList.toggle('hidden');">Erweiterte Einstellungen</h1>
-							<div id="advanced_settings_<?=$git_name?>" class="hidden" style="padding-bottom: 20px;">
-								Erlaube <i>force push</i>: &nbsp; 
-<?php
-			if ($allow_force_push) {
-?>
-								Ja &nbsp; 
-								<form action="" method="post" style="display: inline-block;">
-									<input type="hidden" name="action" value="allow_force_push" />
-									<input type="hidden" name="action_value" value="no" />
-									<input type="hidden" name="git_name" value="<?=$git_name?>" />
-									<input type="submit" value="Verbieten" title="Git Repository löschen" class="button" />
-								</form>
-<?php
-			} else {
-?>
-								Nein &nbsp; 
-								<form action="" method="post" style="display: inline-block;">
-									<input type="hidden" name="action" value="allow_force_push" />
-									<input type="hidden" name="action_value" value="yes" />
-									<input type="hidden" name="git_name" value="<?=$git_name?>" />
-									<input type="submit" value="Erlauben" title="Git Repository löschen" class="button" />
-								</form>
-							</div>
-<?php
-			}
 		}
 ?>
 						</div>
