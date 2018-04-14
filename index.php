@@ -42,7 +42,7 @@ function lines($str) {
 
 function readable_filesize($filesize) {
 	for ($i = 0; ($filesize / 1024) > 0.9; $i++, $filesize /= 1024) {}
-	return round($filesize, 2 /* precision */).['B','kB','MB','GB','TB','PB','EB','ZB','YB'][$i];
+	return round($filesize, 2 /* precision */) . " " . ['B','kB','MB','GB','TB','PB','EB','ZB','YB'][$i];
 }
 
 
@@ -106,7 +106,7 @@ if (isset($_GET["request"])) {
 					<span class="code select_all">git clone <?=$git_url?></span>
 				</p>
 				<p>
-					<?=sipl(count($branches), "Branch", "Branches")?>:
+					<?=sipl(count($branches), "Branch", "Branches")?>
 					<span class="indented">
 <?php
 				foreach ($branches as $i => $branch_disp) {
@@ -125,7 +125,7 @@ if (isset($_GET["request"])) {
 					</span>
 				</p>
 				<p>
-					<?=sipl(count($tags), "Tag", "Tags")?>:
+					<?=sipl(count($tags), "Tag", "Tags")?>
 					<span class="indented">
 						<?=implode("<br />", $tags)?> 
 					</span>
@@ -201,7 +201,7 @@ if (isset($_GET["request"])) {
 						$responseSpanId = "file_browser_" . $git_name . "_" . $ref . $f[4];
 						$filesize = readable_filesize(intval($f[3]));
 ?>
-							<span class="clickable" onclick="toggleFileContent(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4]?>', '<?=$responseSpanId?>')"><?=$f[4]?><i>(<?=$filesize?>)</i></span>
+							<span class="clickable" onclick="toggleFileContent(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4]?>', '<?=$responseSpanId?>')"><?=$f[4]?><i> ( <?=$filesize?> )</i></span>
 							<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
 <?php
 					}
@@ -230,7 +230,7 @@ if (isset($_GET["request"])) {
 					$file_content = "<i class='indented'>(Dieses Dateiformat kann nicht angezeigt werden)</i>";
 				} else {
 					$file_content = explode("\n", $file_content);
-					$file_content = array_map(function($line, $n) { return "<tr><td>" . ($n + 1) . "</td><td>" . str_replace(array(" ", "\t"), array("&nbsp;", "&nbsp;&nbsp;"), $line) . "</td></tr>"; }, $file_content, array_keys($file_content));
+					$file_content = array_map(function($line, $n) { return "<tr><td>" . ($n + 1) . "</td><td>" . $line . "</td></tr>"; }, $file_content, array_keys($file_content));
 					$file_content = "<table class='file_content'>" . implode("", $file_content) . "</table>";
 				}
 ?>
@@ -390,6 +390,7 @@ function show_header() {
 			}
 			table.file_content td:nth-child(2) {
 				padding-left: 10px;
+				white-space: pre-wrap;
 			}
 		</style>
 		<script>
@@ -671,7 +672,7 @@ if (isset($_POST["action"])) {
 		
 		
 		<section>
-			Neues Git Repository mit folgendem Namen erstellen: &nbsp; 
+			Neues Git Repository erstellen: &nbsp; 
 			<form action="" method="post">
 				<input type="hidden" name="action" value="create_git" />
 				<input type="text" name="git_name" placeholder="Git Name" style="width: 150px;" /> &nbsp; 
