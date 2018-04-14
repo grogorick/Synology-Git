@@ -93,7 +93,7 @@ if (isset($_GET["request"])) {
 			
 			case "repo-details": {
 				$git_name = urldecode($_GET["git_name"]);
-				$git_dir = $git_name . ".git";
+				$git_dir = escapeshellarg($git_name . ".git");
 				$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
 				
 				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
@@ -192,9 +192,9 @@ if (isset($_GET["request"])) {
 			
 			case "file-browser": {
 				$git_name = urldecode($_GET["git_name"]);
-				$git_dir = $git_name . ".git";
+				$git_dir = escapeshellarg($git_name . ".git");
 				$ref = urldecode($_GET["ref"]);
-				$files = lines(shell(cd_git . "cd $git_dir;" . "git ls-tree -l --abbrev $ref"));
+				$files = lines(shell(cd_git . "cd $git_dir;" . "git ls-tree -l --abbrev " . escapeshellarg($ref)));
 				foreach ($files as $i => $file) {
 					$f = preg_split("/\\s+/", $file);
 					if ($f[1] === "blob" /* file */) {
@@ -222,8 +222,8 @@ if (isset($_GET["request"])) {
 			
 			case "file-content": {
 				$git_name = urldecode($_GET["git_name"]);
-				$git_dir = $git_name . ".git";
-				$ref = urldecode($_GET["ref"]);
+				$git_dir = escapeshellarg($git_name . ".git");
+				$ref = escapeshellarg(urldecode($_GET["ref"]));
 				$file_content = shell(cd_git . "cd $git_dir;" . "git show $ref");
 				$file_content = htmlspecialchars($file_content);
 				if ($file_content == "") {
@@ -645,7 +645,7 @@ if (isset($_POST["action"])) {
 			"<i>" . shell(ssh_git . "add_key $key_add") . "</i>");
 	}
 	else if ($_POST["action"] === "delete_key") {
-		$key_idx = $_POST["key_idx"];
+		$key_idx = intval($_POST["key_idx"]);
 		$key_user = $_POST["key_user"];
 		echo 
 "		" . msg("Public Key wird gelöscht... <b>$key_user</b><br />" . 
