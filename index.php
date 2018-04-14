@@ -96,10 +96,9 @@ if (isset($_GET["request"])) {
 				$git_dir = escapeshellarg($git_name . ".git");
 				$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
 				
-				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
-				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . CONFIG_NUM_LATEST_COMMITS . " --graph --oneline --branches --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
 				$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch"));
 				$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag"));
+				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
 				$allow_force_push = preg_match("/=false$/i", shell(cd_git . "cd $git_dir;" . "git config --local -l | grep -i receive.denynonfastforwards"));
 ?>
 				<p>
@@ -131,32 +130,8 @@ if (isset($_GET["request"])) {
 					</span>
 				</p>
 				<p>
-					<?=sipl($num_commits, "Commit", "Commits")?>:
-					<table class="commits">
-<?php
-				foreach ($log as &$commit) {
-					$commit = explode("___", $commit);
-					if (count($commit) > 1) {
-?>
-						<tr>
-							<td><?=str_replace(" ", "&nbsp;", $commit[0 /* graph */])?></td>
-							<td><?=$commit[3 /* message */]?></td>
-							<td><?=str_replace(" ", "&nbsp;", $commit[4 /* name */])?></td>
-							<td>(<?=str_replace(" ", "&nbsp;", $commit[2 /* date */])?>)</td>
-							<td><?=$commit[5 /* branch */]?></td>
-							<td><?=$commit[1 /* hash */]?></td>
-						</tr>
-<?php
-					}
-					else {
-?>
-						<tr><td><?=$commit[0 /* graph */]?></td></tr>
-<?php
-					}
-				}
-?>
-						<tr><td><?=$num_commits > CONFIG_NUM_LATEST_COMMITS ? "..." : ""?></td></tr>
-					</table>
+					<span class="clickable" onclick="toggleCommits('<?=$git_name?>', 'commits_<?=$git_name?>')"><?=sipl($num_commits, "Commit", "Commits")?></span>
+					<table class="commits hidden" id="commits_<?=$git_name?>"></table>
 				</p>
 				
 				<h1 style="cursor: pointer;"
@@ -188,6 +163,41 @@ if (isset($_GET["request"])) {
 ?>
 				</div>
 <?php
+			} break;
+			
+			case "list-commits": {
+				$git_name = urldecode($_GET["git_name"]);
+				$skip_commits = isset($_GET["skip"]) ? intval($_GET["skip"]) : 0;
+				$git_dir = escapeshellarg($git_name . ".git");
+				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
+				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . CONFIG_NUM_LATEST_COMMITS . " --skip=" . $skip_commits . " --graph --oneline --branches --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
+				
+				foreach ($log as $commit) {
+					$commit = explode("___", $commit);
+					if (count($commit) > 1) {
+?>
+						<tr>
+							<td><?=str_replace(" ", "&nbsp;", $commit[0 /* graph */])?></td>
+							<td><?=$commit[3 /* message */]?></td>
+							<td><?=str_replace(" ", "&nbsp;", $commit[4 /* name */])?></td>
+							<td>(<?=str_replace(" ", "&nbsp;", $commit[2 /* date */])?>)</td>
+							<td><?=$commit[5 /* branch */]?></td>
+							<td><?=$commit[1 /* hash */]?></td>
+						</tr>
+<?php
+					}
+					else { // graph fork/join
+?>
+						<tr><td><?=$commit[0 /* graph */]?></td></tr>
+<?php
+					}
+				}
+				$numListedCommits = $skip_commits + CONFIG_NUM_LATEST_COMMITS;
+				if ($num_commits > $numListedCommits) {
+?>
+						<tr id="more_commits_<?=$git_name?>"><td class="clickable" onclick="moreCommits('<?=$git_name?>', <?=$numListedCommits?>, 'more_commits_<?=$git_name?>')">...</td></tr>
+<?php
+				}
 			} break;
 			
 			case "file-browser": {
@@ -394,11 +404,15 @@ function show_header() {
 			}
 		</style>
 		<script>
-			function requrest(url, responseTarget) {
+			function request(url, responseTarget) {
 				var xhttp = new XMLHttpRequest();
 				xhttp.onreadystatechange = function() {
 					if (this.readyState == 4 && this.status == 200) {
-						responseTarget.innerHTML = this.responseText;
+						if (typeof responseTarget === "function") {
+							responseTarget(this.responseText);
+						} else {
+							responseTarget.innerHTML = this.responseText;
+						}
 					}
 				};
 				xhttp.open("GET", url, true);
@@ -408,7 +422,7 @@ function show_header() {
 			function togglePublicKeys() {
 				var keys_table = document.getElementById("public_keys_table");
 				if (keys_table.innerHTML.trim() == "") {
-					requrest("/?request=list-public-keys", keys_table);
+					request("/?request=list-public-keys", keys_table);
 					keys_table.innerHTML = "<i>(lädt ...)</i>";
 				}
 				document.getElementById('public_key_management').classList.toggle('hidden');
@@ -417,17 +431,36 @@ function show_header() {
 			function toggleRepoDetails(git_name) {
 				var git_details_div = document.getElementById("git_details_" + git_name);
 				if (git_details_div.innerHTML.trim() == "") {
-					requrest("/?request=repo-details&git_name=" + encodeURI(git_name), git_details_div);
+					request("/?request=repo-details&git_name=" + encodeURI(git_name), git_details_div);
 					git_details_div.innerHTML = "<i>(lädt ...)</i>";
 				}
 				document.getElementById("git_details_row_" + git_name).classList.toggle('hidden');
+			}
+			
+			function toggleCommits(git_name, responseTargetId) {
+				var responseTarget = document.getElementById(responseTargetId);
+				if (responseTarget.innerHTML.trim() == "") {
+					request("?request=list-commits&git_name=" + encodeURI(git_name), responseTarget);
+					responseTarget.innerHTML = "<i>(lädt ...)</i>";
+				}
+				responseTarget.classList.toggle('hidden');
+			}
+			
+			function moreCommits(git_name, skip, moreCommitsTagId) {
+				var moreCommitsTag = document.getElementById(moreCommitsTagId);
+				var responseTarget = moreCommitsTag.parentNode;
+				request("?request=list-commits&git_name=" + encodeURI(git_name) + "&skip=" + skip, function(responseText) {
+					responseTarget.removeChild(moreCommitsTag);
+					responseTarget.innerHTML = responseTarget.innerHTML + responseText;
+				});
+				moreCommitsTag.innerHTML = "<td colspan=2><i>(lädt ...)</i></td>";
 			}
 			
 			function toggleFileBrowser(event, git_name, ref, responseTargetId) {
 				event.stopPropagation();
 				var responseTarget = document.getElementById(responseTargetId);
 				if (responseTarget.innerHTML.trim() == "") {
-					requrest("/?request=file-browser&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
+					request("/?request=file-browser&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
 					responseTarget.innerHTML = "<i>(lädt ...)</i>";
 				}
 				responseTarget.classList.toggle('hidden');
@@ -438,7 +471,7 @@ function show_header() {
 				console.log(responseTargetId);
 				var responseTarget = document.getElementById(responseTargetId);
 				if (responseTarget.innerHTML.trim() == "") {
-					requrest("/?request=file-content&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
+					request("/?request=file-content&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
 					responseTarget.innerHTML = "<i>(lädt ...)</i>";
 				}
 				responseTarget.classList.toggle('hidden');
