@@ -103,7 +103,7 @@ if (isset($_GET["request"])) {
 				$allow_force_push = preg_match("/=false$/i", shell(cd_git . "cd $git_dir;" . "git config --local -l | grep -i receive.denynonfastforwards"));
 ?>
 				<p>
-					<span class="code">git clone <?=$git_url?></span>
+					<span class="code select_all">git clone <?=$git_url?></span>
 				</p>
 				<p>
 					<?=sipl(count($branches), "Branch", "Branches")?>:
@@ -342,6 +342,9 @@ function show_header() {
 			.clickable {
 				cursor: pointer;
 			}
+			.select_all {
+				user-select: all;
+			}
 			.second_row {
 				background: #fbfbfb;
 			}
@@ -379,10 +382,11 @@ function show_header() {
 				padding-left: 20px;
 				color: gray;
 			}
-			table.file_content td:nth-child(1) {
+			table.file_content td:first-child {
 				padding-right: 10px;
 				border-right: 1px solid gray;
 				color: gray;
+				user-select: none;
 			}
 			table.file_content td:nth-child(2) {
 				padding-left: 10px;
@@ -500,12 +504,15 @@ function msg($text) {
 	return "<section><span class=\"message\">$text</span></section>\n";
 }
 
-function check_git_name($git_name) {
+function check_new_git_name($git_name) {
 	if (strlen($git_name) < 3) {
 		return "Der gewählte Name ist zu kurz: mindestens 3 Zeichen.";
 	}
 	else if (!preg_match("/^[A-Za-z0-9_+\-]+$/", $git_name)) {
 		return "Der gewählte Name enthält unerlaubte Zeichen. Benutze nur: A-Z a-z 0-9 _ + -";
+	}
+	else if (is_dir(CONFIG_GIT_BASE_PATH . $git_name . ".git")) {
+		return "Es existiert bereits ein Repository mit dem Namen <b>" . $git_name . "</b>.";
 	}
 	return true;
 }
@@ -656,7 +663,7 @@ if (isset($_POST["action"])) {
 			
 			<section>
 				Mithilfe von Public Keys können Befehle wie <i>git pull</i> oder <i>git push</i> ohne Eingabe von Nutzernamen und Passwort durchgeführt werden. 
-				(<span class="inline-code">ssh <?=CONFIG_SSH_USER . "@" . CONFIG_SERVER . " -p " . CONFIG_SSH_PORT?></span>)
+				(<span class="inline-code select_all">ssh <?=CONFIG_SSH_USER . "@" . CONFIG_SERVER . " -p " . CONFIG_SSH_PORT?></span>)
 				<hr />
 			</section>
 		</div>
@@ -679,7 +686,7 @@ if (isset($_POST["action"])) {
 if (isset($_POST["action"])) {
 	if ($_POST["action"] === "create_git") {
 		$git_name_create = trim(strip_tags($_POST["git_name"]));
-		$check_name = check_git_name($git_name_create);
+		$check_name = check_new_git_name($git_name_create);
 		if ($check_name !== true) {
 			unset($git_name_create);
 			echo 
@@ -695,7 +702,7 @@ if (isset($_POST["action"])) {
 	}
 	else if ($_POST["action"] === "rename_git") {
 		$git_name_rename = trim(strip_tags($_POST["git_name_new"]));
-		$check_name = check_git_name($git_name_rename);
+		$check_name = check_new_git_name($git_name_rename);
 		if ($check_name !== true) {
 			unset($git_name_rename);
 			echo 
@@ -832,14 +839,14 @@ else {
 							<p>
 								Neues/leeres Projekt:<br />
 								<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
-								<span class="code">
+								<span class="code select_all">
 									git clone <?=$git_url?> 
 								</span>
 							</p>
 							<p>
 								Existierendes Verzeichnis:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code">
+								<span class="code select_all">
 									git init<br />
 									git remote add origin <?=$git_url?><br />
 									git add .<br />
@@ -850,7 +857,7 @@ else {
 							<p>
 								Existierendes lokales Git Repository:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code">
+								<span class="code select_all">
 									git remote add origin <?=$git_url?><br />
 									git push -u origin --all<br />
 									git push -u origin --tags
@@ -859,7 +866,7 @@ else {
 							<p>
 								Existierendes online Git Repository:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code">
+								<span class="code select_all">
 									git remote rename origin old<br />
 									git remote add origin <?=$git_url?><br />
 									git push -u origin --all<br />
