@@ -9,10 +9,9 @@ Required Apps:
 
 
 
-define("CONFIG_LOGIN_USER", "***REMOVED***");
-define("CONFIG_LOGIN_PASS_MD5", "***REMOVED***");
-
 define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
+define("CONFIG_OAUTH_URL", CONFIG_SERVER . ":5001/webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login&account={USER}&passwd={PASSWD}&session=GitWeb&format=cookie");
+
 define("CONFIG_SSH_USER", "gituser");
 define("CONFIG_SSH_PORT", 22);
 define("CONFIG_GIT_BASE_PATH", "/volume1/git/");
@@ -497,12 +496,19 @@ if (isset($_SESSION['auth'])) {
 	}
 }
 if (!isset($_SESSION["auth"])) {
-	if (isset($_POST["user"]) && isset($_POST["pass"]) && $_POST["user"] === CONFIG_LOGIN_USER && md5($_POST["pass"]) === CONFIG_LOGIN_PASS_MD5) {
-		session_regenerate_id(true);
-		$_SESSION["user"] = $_POST["user"];
-		$_SESSION['auth'] = time();
-		header("Location: /");
-		exit;
+	if (isset($_POST["user"]) && isset($_POST["pass"])) {
+    $url = "https://" . CONFIG_OAUTH_URL;
+    $url = str_replace("{USER}", $_POST["user"], $url);
+    $url = str_replace("{PASSWD}", rawurlencode($_POST["pass"]), $url);
+    $response = file_get_contents($url);
+    $json = json_decode($response);
+    if ($json->success) {
+      session_regenerate_id(true);
+      $_SESSION["user"] = $_POST["user"];
+      $_SESSION['auth'] = time();
+      header("Location: /");
+      exit;
+    }
 	}
 	else if (isset($_GET["login"])) {
 		show_header();
@@ -591,6 +597,9 @@ show_header();
 					<li>
 						Dem Benutzer in der <i>Git Server</i> App den Zugriff für den Nutzer <b>git</b> erlauben.
 					</li>
+					<li>
+						PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
+					</li>
 				</ul>
 				
 				<span class="button" 
@@ -614,6 +623,7 @@ show_header();
 					</ul>
 					<li><i>OK</i>.</li>
 				</ul>
+        
 				Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
 				Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
 				<ul>
@@ -644,6 +654,14 @@ show_header();
 					<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
 					<li><i>Übernehmen</i></li>
 				</ul>
+        
+        PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
+        <ul>
+          <li>In der App <i>Web Station</i> auf <i>Allgemeine Einstellungen</i> wechseln und die genutzte <i>PHP</i> Version merken.</li>
+          <li>Auf <i>PHP-Einstellungen</i> wechseln.</li>
+          <li>Das genutzte Profil (gemerkte Version) <i>bearbeiten</i>.</li>
+          <li>Unten bei <i>Erweiterungen</i> den Eintrag <i>openssl</i> suchen und [&check;] aktivieren.</li>
+        </ul>
 				
 				<span class="button" 
 					onclick="document.getElementById('synology_setup_instructions_long').classList.add('hidden'); 
