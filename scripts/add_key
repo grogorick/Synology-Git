@@ -1,20 +1,5 @@
 #!/bin/sh
 
-config_pass="***REMOVED***"
-
-echo -n "password: "
-read -s pass
-echo
-
-pass_md5=$(php -r "echo md5('$pass');")
-
-if [ "$pass_md5" != "$config_pass" ]
-then
-	# Dislpay a notice and stop
-	echo "sorry..."
-	exit 1
-fi
-
 if [ -z "$1" ]
 then
 	echo use the following command to find your public key:
