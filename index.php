@@ -508,7 +508,7 @@ if (!isset($_SESSION["auth"])) {
       session_regenerate_id(true);
       $_SESSION["user"] = $_POST["user"];
       $_SESSION['auth'] = time();
-      header("Location: /?login");
+      header("Location: /");
       exit;
     }
 	}
@@ -529,7 +529,7 @@ if (!isset($_SESSION["auth"])) {
 }
 if (isset($_GET["logout"])) {
 	session_unset();
-	header("Location: /");
+	header("Location: /?login");
 	exit;
 }
 if (!isset($_SESSION["auth"])) {
