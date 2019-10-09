@@ -9,10 +9,9 @@ Required Apps:
 
 
 
-define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
-define("CONFIG_LOGIN_URL", CONFIG_SERVER . ":5001/webapi/auth.cgi?api=SYNO.API.Auth&version=3&session=FileStation&method=login&account={USER}&passwd={PASSWD}&format=cookie");
-define("CONFIG_LOGOUT_URL", CONFIG_SERVER . ":5001/webapi/auth.cgi?api=SYNO.API.Auth&version=1&session=FileStation&method=logout");
+define("CONFIG_DSM_SERVER", "#####.synology.me:5001");
 
+define("CONFIG_SERVER", "git.yournicedyndnsdomain.com");
 define("CONFIG_SSH_USER", "gituser");
 define("CONFIG_SSH_PORT", 22);
 define("CONFIG_GIT_BASE_PATH", "/volume1/git/");
@@ -498,13 +497,11 @@ if (isset($_SESSION['auth'])) {
 }
 if (!isset($_SESSION["auth"])) {
 	if (isset($_POST["user"]) && isset($_POST["pass"])) {
-    $url = "https://" . CONFIG_LOGIN_URL;
-    $url = str_replace("{USER}", $_POST["user"], $url);
-    $url = str_replace("{PASSWD}", rawurlencode($_POST["pass"]), $url);
+    $url = "https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=3&session=FileStation&method=login&account=" . $_POST["user"] . "&passwd=" . rawurlencode($_POST["pass"]) . "&format=cookie";
     $response = file_get_contents($url);
     $json = json_decode($response);
     if ($json->success) {
-      file_get_contents("https://" . CONFIG_LOGOUT_URL);
+      file_get_contents("https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=1&session=FileStation&method=logout");
       session_regenerate_id(true);
       $_SESSION["user"] = $_POST["user"];
       $_SESSION['auth'] = time();
