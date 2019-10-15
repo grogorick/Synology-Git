@@ -170,7 +170,7 @@ if (isset($_GET["request"])) {
 				$num_latest_commits = isset($_GET["num"]) ? intval($_GET["num"]) : CONFIG_NUM_LATEST_COMMITS;
 				$git_dir = escapeshellarg($git_name . ".git");
 				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
-				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . $num_latest_commits . " --graph --oneline --branches --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
+				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . $num_latest_commits . " --graph --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
 				
 				foreach ($log as $commit) {
 					$commit = explode("___", $commit);
@@ -203,10 +203,15 @@ if (isset($_GET["request"])) {
 				$git_name = urldecode($_GET["git_name"]);
 				$git_dir = escapeshellarg($git_name . ".git");
 				$ref = urldecode($_GET["ref"]);
+				$tmpPos = strpos($ref, ":") ?: strlen($ref);
+				$branch = substr($ref, 0, $tmpPos);
+				$path = substr($ref, $tmpPos + 1);
 				$files = lines(shell(cd_git . "cd $git_dir;" . "git ls-tree -l --abbrev " . escapeshellarg($ref)));
 				foreach ($files as $i => $file) {
 					$f = preg_split("/\\s+/", $file);
-					if ($f[1] === "blob" /* file */) {
+
+					// file
+					if ($f[1] === "blob") {
 						$responseSpanId = "file_browser_" . $git_name . "_" . $ref . $f[4];
 						$filesize = readable_filesize(intval($f[3]));
 ?>
@@ -214,13 +219,26 @@ if (isset($_GET["request"])) {
 							<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
 <?php
 					}
-					else if ($f[1] === "tree" /* directory */) {
+
+					// directory
+					else if ($f[1] === "tree") {
 						$responseSpanId = "file_browser_" . $git_name . "_" . $ref . $f[4] . "/";
 ?>
-							<span class="clickable" onclick="toggleFileBrowser(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4] . "/"?>', '<?=$responseSpanId?>')"><?=$f[4]?></span>
+							<span class="clickable" onclick="toggleFileBrowser(arguments[0], '<?=$git_name?>', '<?=$ref . $f[4] . "/"?>', '<?=$responseSpanId?>')"><?=$f[4]?>/</span>
 							<span class="file-browser hidden" id="<?=$responseSpanId?>"></span>
 <?php
 					}
+
+					// submodule
+					else if ($f[1] === "commit") {
+						$submodule = shell(cd_git . "cd $git_dir;" . "git config --blob $branch:.gitmodules --get-regex ^submodule.*.path$ $path");
+						$submodule = preg_replace("/^submodule[.](.+)[.]path .+$/", "$1", $submodule);
+						$submoduleURL = shell(cd_git . "cd $git_dir;" . "git config --blob master:.gitmodules --get submodule.$submodule.url");
+?>
+							<?=$path . $f[4]?>/ <font class="inline-code">(<?=$submoduleURL?> @ <?=$f[2]?>)</font>
+<?php
+					}
+
 					else { /* this should not happen */
 ?>
 							<span style="color: red;"><?=$file?></span>
