@@ -240,7 +240,7 @@ if (isset($_GET["request"])) {
 				} else {
 					$file_content = explode("\n", $file_content);
 					$file_content = array_map(function($line, $n) { return "<tr><td>" . ($n + 1) . "</td><td>" . $line . "</td></tr>"; }, $file_content, array_keys($file_content));
-					$file_content = "<table class='file_content'>" . implode("", $file_content) . "</table>";
+					$file_content = "<table class='code file_content'>" . implode("", $file_content) . "</table>";
 				}
 ?>
 								<?=$file_content?>
@@ -263,116 +263,8 @@ function show_header() {
 <html>
 	<head>
 		<title>Schatzkiste</title>
+		<link rel="stylesheet" href="style/general.css">
 		<style>
-			section {
-				padding-top: 20px;
-			}
-			div {
-				margin: 0px;
-				padding: 0px;
-			}
-			h1 {
-				color: #666;
-				font-size: 100%;
-				font-weight: bold;
-				margin-top: 0px;
-				margin-bottom: 10px;
-			}
-			p {
-				padding-top: 10px;
-			}
-			form {
-				display: inline-block;
-				margin: 0px;
-			}
-			table {
-				border-collapse: separate;
-				border-spacing: 0px;
-			}
-			table td {
-				vertical-align: top;
-			}
-			input[type="text"], input[type="password"] {
-				background: transparent;
-				border: 0px;
-				border-top: 1px solid #ddd;
-				border-bottom: 1px solid #ddd;
-			}
-			a {
-				color: #000;
-				text-decoration: none;
-			}
-			hr {
-				border: 0px;
-				height: 1px;
-				background: #ddd;
-				margin-top: 20px;
-				margin-bottom: 20px;
-			}
-			.button {
-				background: transparent;
-				border: 0px;
-				border-left: 1px solid #ddd;
-				border-right: 1px solid #ddd;
-				padding: 0px 5px;
-				cursor: pointer;
-			}
-			.button:hover {
-				border-left: 1px solid #000;
-				border-right: 1px solid #000;
-			}
-			.message {
-				display: inline-block;
-				border: 1px solid #ddd;
-				padding: 10px 30px;
-			}
-			.inline-code {
-				font-family: consolas;
-				font-size: 80%;
-				padding-left: 20px;
-				padding-right: 20px;
-			}
-			.code {
-				font-family: consolas;
-				font-size: 80%;
-				border-left: 1px solid #ddd;
-				padding-left: 20px;
-				margin-top: 5px;
-				display: inline-block;
-			}
-			.indented {
-				display: block;
-				padding-left: 20px;
-				margin-top: 5px;
-			}
-			.hidden {
-				display: none !important;
-			}
-			.clickable {
-				cursor: pointer;
-			}
-			.select_all {
-				user-select: all;
-			}
-			.second_row {
-				background: #fbfbfb;
-			}
-			.new {
-				background: #dfd;
-			}
-			.modified {
-				background: #ffb;
-			}
-			.break-lines {
-				word-wrap: break-word;
-			}
-			.max-width-column {
-				width: 900px;
-				max-width: 900px;
-			}
-			.table_padding > tbody > tr > td {
-				padding: 5px 20px;
-			}
 			.commits td {
 				padding-left: 20px;
 				padding-top: 5px;
@@ -390,6 +282,10 @@ function show_header() {
 			span.file-browser > i {
 				padding-left: 20px;
 				color: gray;
+			}
+			table.file_content {
+				border-left: 0;
+				padding-left: 0;
 			}
 			table.file_content td:first-child {
 				padding-right: 10px;
@@ -889,39 +785,37 @@ else {
 							<p>
 								Neues/leeres Projekt:<br />
 								<span class="indented"><i>Git Bash</i> dort starten, wo das Git Verzeichnis heruntergeladen werden soll.</span>
-								<span class="code select_all">
-									git clone <?=$git_url?> 
-								</span>
+								<span class="code select_all">git clone <?=$git_url?></span>
 							</p>
 							<p>
 								Existierendes Verzeichnis:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code select_all">
-									git init<br />
-									git remote add origin <?=$git_url?><br />
-									git add .<br />
-									git commit -m "Initial commit"<br />
-									git push -u origin master
-								</span>
+								<span class="code select_all"><?=
+									"git init<br />" .
+									"git remote add origin <?=$git_url?><br />" .
+									"git add .<br />" .
+									"git commit -m \"Initial commit\"<br />" .
+									"git push -u origin master"
+								?></span>
 							</p>
 							<p>
 								Existierendes lokales Git Repository:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code select_all">
-									git remote add origin <?=$git_url?><br />
-									git push -u origin --all<br />
-									git push -u origin --tags
-								</span>
+								<span class="code select_all"><?=
+									"git remote add origin <?=$git_url?><br />" .
+									"git push -u origin --all<br />" .
+									"git push -u origin --tags"
+								?></span>
 							</p>
 							<p>
 								Existierendes online Git Repository:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
-								<span class="code select_all">
-									git remote rename origin old<br />
-									git remote add origin <?=$git_url?><br />
-									git push -u origin --all<br />
-									git push -u origin --tags
-								</span>
+								<span class="code select_all"><?=
+									"git remote rename origin old<br />" .
+									"git remote add origin <?=$git_url?><br />" .
+									"git push -u origin --all<br />" .
+									"git push -u origin --tags"
+								?></span>
 							</p>
 <?php
 		}
@@ -934,8 +828,9 @@ else {
 			
 <?php
 	}
-	echo 
-"			</table>\n";
+?>
+			</table>
+<?php
 }
 ?>
 		</section>
