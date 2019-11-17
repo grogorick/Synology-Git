@@ -810,7 +810,7 @@ else {
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 								<span class="code select_all"><?=
 									"git init<br />" .
-									"git remote add origin <?=$git_url?><br />" .
+									"git remote add origin " . $git_url . "<br />" .
 									"git add .<br />" .
 									"git commit -m \"Initial commit\"<br />" .
 									"git push -u origin master"
@@ -820,7 +820,7 @@ else {
 								Existierendes lokales Git Repository:<br />
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 								<span class="code select_all"><?=
-									"git remote add origin <?=$git_url?><br />" .
+									"git remote add origin " . $git_url . "<br />" .
 									"git push -u origin --all<br />" .
 									"git push -u origin --tags"
 								?></span>
@@ -830,7 +830,7 @@ else {
 								<span class="indented"><i>Git Bash</i> in dem existierenden Verzeichnis starten.</span>
 								<span class="code select_all"><?=
 									"git remote rename origin old<br />" .
-									"git remote add origin <?=$git_url?><br />" .
+									"git remote add origin " . $git_url . "<br />" .
 									"git push -u origin --all<br />" .
 									"git push -u origin --tags"
 								?></span>
