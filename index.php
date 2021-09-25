@@ -59,7 +59,7 @@ if (isset($_GET["request"])) {
 	session_start();
 	if (isset($_SESSION['auth']) && time() - $_SESSION['auth'] <= CONFIG_SESSION_TIMEOUT) {
 		switch ($_GET["request"]) {
-			
+
 			case "list-public-keys": {
 				$keys = lines(shell(ssh_git . "list_keys"));
 				$second_row = true;
@@ -93,12 +93,12 @@ if (isset($_GET["request"])) {
 <?php
 				}
 			} break;
-			
+
 			case "repo-details": {
 				$git_name = urldecode($_GET["git_name"]);
 				$git_dir = escapeshellarg($git_name . ".git");
 				$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
-				
+
 				$branches = lines(shell(cd_git . "cd $git_dir;" . "git branch"));
 				$tags = lines(shell(cd_git . "cd $git_dir;" . "git tag"));
 				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
@@ -133,7 +133,7 @@ if (isset($_GET["request"])) {
 					<span class="clickable" onclick="toggleCommits('<?=$git_name?>', 'commits_<?=$git_name?>')"><?=sipl($num_commits, "Commit", "Commits")?></span>
 					<table class="commits hidden" id="commits_<?=$git_name?>"></table>
 				</p>
-				
+
 				<h1 style="cursor: pointer;"
 					onclick="document.getElementById('advanced_settings_<?=$git_name?>').classList.toggle('hidden');">Erweiterte Einstellungen</h1>
 				<div id="advanced_settings_<?=$git_name?>" class="hidden" style="padding-bottom: 20px;">
@@ -164,14 +164,14 @@ if (isset($_GET["request"])) {
 				</div>
 <?php
 			} break;
-			
+
 			case "list-commits": {
 				$git_name = urldecode($_GET["git_name"]);
 				$num_latest_commits = isset($_GET["num"]) ? intval($_GET["num"]) : CONFIG_NUM_LATEST_COMMITS;
 				$git_dir = escapeshellarg($git_name . ".git");
 				$num_commits = shell(cd_git . "cd $git_dir;" . "git rev-list --all --count");
 				$log = lines(shell(cd_git . "cd $git_dir;" . "git log -" . $num_latest_commits . " --graph --all --date-order --format=format:'___%h___%ar___%s___%an___%d'"));
-				
+
 				foreach ($log as $commit) {
 					$commit = explode("___", $commit);
 					if (count($commit) > 1) {
@@ -198,7 +198,7 @@ if (isset($_GET["request"])) {
 <?php
 				}
 			} break;
-			
+
 			case "file-browser": {
 				$git_name = urldecode($_GET["git_name"]);
 				$git_dir = escapeshellarg($git_name . ".git");
@@ -246,7 +246,7 @@ if (isset($_GET["request"])) {
 					}
 				}
 			} break;
-			
+
 			case "file-content": {
 				$git_name = urldecode($_GET["git_name"]);
 				$git_dir = escapeshellarg($git_name . ".git");
@@ -331,7 +331,7 @@ function show_header() {
 				xhttp.open("GET", url, true);
 				xhttp.send();
 			}
-			
+
 			function togglePublicKeys() {
 				var keys_table = document.getElementById("public_keys_table");
 				if (keys_table.innerHTML.trim() == "") {
@@ -340,16 +340,19 @@ function show_header() {
 				}
 				document.getElementById('public_key_management').classList.toggle('hidden');
 			}
-			
+
 			function toggleRepoDetails(git_name) {
 				var git_details_div = document.getElementById("git_details_" + git_name);
 				if (git_details_div.innerHTML.trim() == "") {
-					request("/?request=repo-details&git_name=" + encodeURI(git_name), git_details_div);
+					request("/?request=repo-details&git_name=" + encodeURI(git_name), function(response_details) {
+						git_details_div.innerHTML = response_details;
+						prepareSelectAllOnlyOnce(git_details_div);
+					});
 					git_details_div.innerHTML = "<?=TEXT_LOADING?>";
 				}
 				document.getElementById("git_details_row_" + git_name).classList.toggle('hidden');
 			}
-			
+
 			function toggleCommits(git_name, responseTargetId) {
 				var responseTarget = document.getElementById(responseTargetId);
 				if (responseTarget.innerHTML.trim() == "") {
@@ -358,7 +361,7 @@ function show_header() {
 				}
 				responseTarget.classList.toggle('hidden');
 			}
-			
+
 			function moreCommits(git_name, num_commits, moreCommitsTagId) {
 				var moreCommitsTag = document.getElementById(moreCommitsTagId);
 				var responseTarget = moreCommitsTag.parentNode;
@@ -367,7 +370,7 @@ function show_header() {
 				});
 				moreCommitsTag.innerHTML = "<td colspan=2><?=TEXT_LOADING?></td>";
 			}
-			
+
 			function toggleFileBrowser(event, git_name, ref, responseTargetId) {
 				event.stopPropagation();
 				var responseTarget = document.getElementById(responseTargetId);
@@ -377,7 +380,7 @@ function show_header() {
 				}
 				responseTarget.classList.toggle('hidden');
 			}
-			
+
 			function toggleFileContent(event, git_name, ref, responseTargetId) {
 				event.stopPropagation();
 				console.log(responseTargetId);
@@ -388,6 +391,16 @@ function show_header() {
 				}
 				responseTarget.classList.toggle('hidden');
 			}
+
+			function prepareSelectAllOnlyOnce(element) {
+				element.querySelectorAll('.select_all').forEach(function(el) {
+					['mouseup', 'touchend'].forEach(function(eventType) {
+						el.addEventListener(eventType, function() {
+							el.classList.remove('select_all');
+						});
+					});
+				});
+			}
 		</script>
 	</head>
 	<body>
@@ -396,6 +409,9 @@ function show_header() {
 
 function show_footer() {
 ?>
+		<script>
+			prepareSelectAllOnlyOnce(document);
+		</script>
 	</body>
 </html>
 <?php
@@ -411,17 +427,17 @@ if (isset($_SESSION['auth'])) {
 }
 if (!isset($_SESSION["auth"])) {
 	if (isset($_POST["user"]) && isset($_POST["pass"])) {
-    $url = "https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=3&session=FileStation&method=login&account=" . $_POST["user"] . "&passwd=" . rawurlencode($_POST["pass"]) . "&format=cookie";
-    $response = file_get_contents($url);
-    $json = json_decode($response);
-    if ($json->success) {
-      file_get_contents("https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=1&session=FileStation&method=logout");
-      session_regenerate_id(true);
-      $_SESSION["user"] = $_POST["user"];
-      $_SESSION['auth'] = time();
-      header("Location: /");
-      exit;
-    }
+		$url = "https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=3&session=FileStation&method=login&account=" . $_POST["user"] . "&passwd=" . rawurlencode($_POST["pass"]) . "&format=cookie";
+		$response = file_get_contents($url);
+		$json = json_decode($response);
+		if ($json->success) {
+			file_get_contents("https://" . CONFIG_DSM_SERVER . "/webapi/auth.cgi?api=SYNO.API.Auth&version=1&session=FileStation&method=logout");
+			session_regenerate_id(true);
+			$_SESSION["user"] = $_POST["user"];
+			$_SESSION['auth'] = time();
+			header("Location: /");
+			exit;
+		}
 	}
 	else if (isset($_GET["login"])) {
 		show_header();
@@ -477,13 +493,13 @@ function sipl($number, $singular, $plural) {
 
 show_header();
 ?>
-		
-		
-		
+
+
+
 		<section>
 			<?=$_SESSION["user"]?> &nbsp; 
 			<a href="/?logout" class="button">ausloggen</a>
-			
+
 			<span class="button" style="float: right;" 
 				onclick="document.getElementById('synology_setup_instructions').classList.toggle('hidden');">
 				Synology NAS Einrichtung
@@ -495,8 +511,8 @@ show_header();
 			<hr />
 		</section>
 
-		
-		
+
+
 		<div id="synology_setup_instructions" class="hidden">
 			<section id="synology_setup_instructions_short">
 				<h1>Einrichtung</h1>
@@ -514,13 +530,13 @@ show_header();
 						PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
 					</li>
 				</ul>
-				
+
 				<span class="button" 
 					onclick="document.getElementById('synology_setup_instructions_short').classList.add('hidden'); 
 							document.getElementById('synology_setup_instructions_long').classList.remove('hidden');">detaillierte Anleitung anzeigen</span>
 				<hr />
 			</section>
-			
+
 			<section id="synology_setup_instructions_long" class="hidden">
 				<h1>Einrichtung</h1>
 				<br />
@@ -536,7 +552,7 @@ show_header();
 					</ul>
 					<li><i>OK</i>.</li>
 				</ul>
-        
+
 				Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
 				Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
 				<ul>
@@ -544,7 +560,7 @@ show_header();
 					<li>Der Gruppe <i>http</i> die Berechtigungen zum <i>Lesen/Schreiben</i> [&check;] aktivieren.</li>
 					<li><i>OK</i>.</li>
 				</ul>
-				
+
 				Nun wird ein Nutzer für den externen Zugriff per Git benötigt:
 				<ul>
 					<li>In der App <i>Systemsteuering</i> die Kategorie <i>Benutzer</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
@@ -561,29 +577,29 @@ show_header();
 					<li><i>2 x Weiter</i></li>
 					<li><i>Übernehmen</i></li>
 				</ul>
-				
+
 				Zuletzt muss der externe Zugriff per Git für diesen Nutzer noch zugelassen werden:
 				<ul>
 					<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
 					<li><i>Übernehmen</i></li>
 				</ul>
-        
-        PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
-        <ul>
-          <li>In der App <i>Web Station</i> auf <i>Allgemeine Einstellungen</i> wechseln und die genutzte <i>PHP</i> Version merken.</li>
-          <li>Auf <i>PHP-Einstellungen</i> wechseln.</li>
-          <li>Das genutzte Profil (gemerkte Version) <i>bearbeiten</i>.</li>
-          <li>Unten bei <i>Erweiterungen</i> den Eintrag <i>openssl</i> suchen und [&check;] aktivieren.</li>
-        </ul>
-				
+
+				PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
+				<ul>
+					<li>In der App <i>Web Station</i> auf <i>Allgemeine Einstellungen</i> wechseln und die genutzte <i>PHP</i> Version merken.</li>
+					<li>Auf <i>PHP-Einstellungen</i> wechseln.</li>
+					<li>Das genutzte Profil (gemerkte Version) <i>bearbeiten</i>.</li>
+					<li>Unten bei <i>Erweiterungen</i> den Eintrag <i>openssl</i> suchen und [&check;] aktivieren.</li>
+				</ul>
+
 				<span class="button" 
 					onclick="document.getElementById('synology_setup_instructions_long').classList.add('hidden'); 
 							document.getElementById('synology_setup_instructions_short').classList.remove('hidden');">kurze Anleitung anzeigen</span>
 				<hr />
 			</section>
 		</div>
-		
-		
+
+
 
 		<div id="public_key_management" class="<?=(isset($_POST["action"]) && ($_POST["action"] === "add_key" || $_POST["action"] === "delete_key")) ? "" : "hidden"?>">
 			<section>
@@ -594,9 +610,9 @@ show_header();
 					<input type="submit" value="hinzufügen" class="button" />
 				</form>
 			</section>
-		
-		
-		
+
+
+
 <?php
 if (isset($_POST["action"])) {
 	if ($_POST["action"] === "add_key") {
@@ -616,24 +632,24 @@ if (isset($_POST["action"])) {
 	}
 }
 ?>
-			
-			
-			
+
+
+
 			<section>
 				<h1>Public Keys:</h1>
 				<table class="table_padding" id="public_keys_table">
 				</table>
 			</section>
-			
+
 			<section>
 				Mithilfe von Public Keys können Befehle wie <i>git pull</i> oder <i>git push</i> ohne Eingabe von Nutzernamen und Passwort durchgeführt werden. 
 				(<span class="inline-code select_all">ssh <?=CONFIG_SSH_USER . "@" . CONFIG_SERVER . " -p " . CONFIG_SSH_PORT?></span>)
 				<hr />
 			</section>
 		</div>
-		
-		
-		
+
+
+
 		<section>
 			Neues Git Repository erstellen: &nbsp; 
 			<form action="" method="post">
@@ -643,9 +659,9 @@ if (isset($_POST["action"])) {
 				<input type="submit" value="erstellen" class="button" />
 			</form>
 		</section>
-		
-		
-		
+
+
+
 <?php
 if (isset($_POST["action"])) {
 	if ($_POST["action"] === "create_git") {
@@ -711,9 +727,9 @@ if (isset($_POST["action"])) {
 	}
 }
 ?>
-		
-		
-		
+
+
+
 		<section>
 			<h1>Git Repositories:</h1>
 <?php
@@ -736,7 +752,7 @@ else {
 		$git_url = "ssh://" . CONFIG_SSH_USER . "@" . CONFIG_SERVER . ":" . CONFIG_SSH_PORT . CONFIG_GIT_BASE_PATH . $git_name . ".git";
 		$git_description = shell(cd_git . "cat $git_dir/description");
 		$is_empty = shell(cd_git . "cd $git_dir/refs/heads;" . count_files) == "0";
-		
+
 		$row_code_second = ($second_row = !$second_row) ? " second_row" : "";
 		$row_code_create = ($git_name_create === $git_name) ? " new" : "";
 		$row_code_rename = ($git_name_rename === $git_name) ? " modified" : "";
@@ -841,9 +857,9 @@ else {
 						</div>
 					</td>
 				</tr>
-			
-			
-			
+
+
+
 <?php
 	}
 ?>
