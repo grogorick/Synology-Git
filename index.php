@@ -522,103 +522,11 @@ show_header();
 			<a href="/?logout" class="button">ausloggen</a>
 
 			<span class="button" style="float: right;" 
-				onclick="document.getElementById('synology_setup_instructions').classList.toggle('hidden');">
-				Synology NAS Einrichtung
-			</span>
-			<span class="button" style="float: right;" 
 				onclick="togglePublicKeys()">
 				Public Keys
 			</span>
 			<hr />
 		</section>
-
-
-
-		<div id="synology_setup_instructions" class="hidden">
-			<section id="synology_setup_instructions_short">
-				<h1>Einrichtung</h1>
-				<ul>
-					<li>
-						Erstelle einen neuen <i>Gemeinsamen Ordner</i> <b>git</b> und gib der Gruppe <i>http</i> die Berechtigungen <i>Lesen/Schreiben</i>.
-					</li>
-					<li>
-						Erstelle einen neuen <i>Benutzer</i> <b>git</b> und füge ihn der Gruppe <i>http</i> zu.
-					</li>
-					<li>
-						Dem Benutzer in der <i>Git Server</i> App den Zugriff für den Nutzer <b>git</b> erlauben.
-					</li>
-					<li>
-						PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
-					</li>
-				</ul>
-
-				<span class="button" 
-					onclick="document.getElementById('synology_setup_instructions_short').classList.add('hidden'); 
-							document.getElementById('synology_setup_instructions_long').classList.remove('hidden');">detaillierte Anleitung anzeigen</span>
-				<hr />
-			</section>
-
-			<section id="synology_setup_instructions_long" class="hidden">
-				<h1>Einrichtung</h1>
-				<br />
-				Zuerst wird ein Basisordner benötigt, in dem alle Git-Verzeichnisse angelegt werden sollen:
-				<ul>
-					<li>In der App <i>Systemsteuerung</i> die Kategorie <i>Gemeinsamer Ordner</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
-					<ul>
-						<li>Name: <b>git</b></li>
-						<li>[ &nbsp; ] Verbergen sie diesen gemenisamen Ordner unter "Netzwerkumgebung"</li>
-						<li>[&check;] Unterordner und Dateien vor Benutzern ohne Berechtigungen ausblenden</li>
-						<li>[ &nbsp; ] Papierkorb aktivieren</li>
-						<li>[ &nbsp; ] Diesen gemeinsamen Ordner verschlüsseln</li>
-					</ul>
-					<li><i>OK</i>.</li>
-				</ul>
-
-				Das Fenster wechselt automatisch zu <i>Freigegebenen Ordner <b>git</b> bearbeiten</i>, in den Tab <i>Berechtigungen</i>.<br />
-				Dort muss der Zugriff für die Web-Oberfläche freigegeben werden:
-				<ul>
-					<li>Filter von <i>Lokale Benutzer</i> zu <i>Lokale Gruppen</i> wechseln.</li>
-					<li>Der Gruppe <i>http</i> die Berechtigungen zum <i>Lesen/Schreiben</i> [&check;] aktivieren.</li>
-					<li><i>OK</i>.</li>
-				</ul>
-
-				Nun wird ein Nutzer für den externen Zugriff per Git benötigt:
-				<ul>
-					<li>In der App <i>Systemsteuering</i> die Kategorie <i>Benutzer</i> wählen und den Button <i>Erstellen</i> nutzen.</li>
-					<ul>
-						<li>Name: <b>git</b></li>
-						<li>[&check;] Lassen Sie nicht zu, dass der Benutze das Konto-Passwort ändern kann.</li>
-					</ul>
-					<li><i>Weiter</i></li>
-					<li>Im folgenden Fenster <i>Gruppen beitreten</i> die Gruppe <i>http</i> [&check;] aktivieren.</li>
-					<li><i>Weiter</i></li>
-					<li>Im folgenden Fenster <i>Berechtigungen für gemeinsame Ordner zuweisen</i> für den gemeinsamen Ordner <i>web</i> die Spalte <i>Kein Zugriff</i> [&check;] aktivieren.</li>
-					<li><i>2 x Weiter</i></li>
-					<li>Im folgenden Fenster <i>Anwendungsberechtigungen zuweisen</i> für alle Anwendungen <i>Verweigern</i> [&check;] aktivieren.</li>
-					<li><i>2 x Weiter</i></li>
-					<li><i>Übernehmen</i></li>
-				</ul>
-
-				Zuletzt muss der externe Zugriff per Git für diesen Nutzer noch zugelassen werden:
-				<ul>
-					<li>In der App <i>Git Server</i> den Zugriff für Nutzer <i>git</i> [&check;] erlauben.</li>
-					<li><i>Übernehmen</i></li>
-				</ul>
-
-				PHP Plugin <i>openssl</i> in der <i>Web Station</i> App aktivieren.
-				<ul>
-					<li>In der App <i>Web Station</i> auf <i>Allgemeine Einstellungen</i> wechseln und die genutzte <i>PHP</i> Version merken.</li>
-					<li>Auf <i>PHP-Einstellungen</i> wechseln.</li>
-					<li>Das genutzte Profil (gemerkte Version) <i>bearbeiten</i>.</li>
-					<li>Unten bei <i>Erweiterungen</i> den Eintrag <i>openssl</i> suchen und [&check;] aktivieren.</li>
-				</ul>
-
-				<span class="button" 
-					onclick="document.getElementById('synology_setup_instructions_long').classList.add('hidden'); 
-							document.getElementById('synology_setup_instructions_short').classList.remove('hidden');">kurze Anleitung anzeigen</span>
-				<hr />
-			</section>
-		</div>
 
 
 
