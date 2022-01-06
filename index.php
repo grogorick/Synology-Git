@@ -28,6 +28,13 @@ define("pwd", "pwd;");
 define("cd_git", "cd " . CONFIG_GIT_BASE_PATH . ";");
 define("count_files", "ls -1 | wc -l;");
 define("ssh_git", "ssh " . CONFIG_SSH_USER . "@localhost -p " . CONFIG_SSH_PORT . " ");
+define("image_file_formats", [
+		"png"  => "png",
+		"jpg"  => "jpg",
+		"jpeg" => "jpg",
+		"gif"  => "gif",
+		"svg"  => "svg+xml"
+	]);
 
 function lines($str) {
 	return array_filter(explode("\n", $str));
@@ -241,8 +248,18 @@ if (isset($_GET["request"])) {
 				$git_name = urldecode($_GET["git_name"]);
 				$git_dir = escapeshellarg($git_name . ".git");
 				$ref = escapeshellarg(urldecode($_GET["ref"]));
+				$file_name = substr($ref, strpos($ref, ":") + 1, -1);
+				$file_ext = strrpos($ref, "."); $file_ext = $file_ext === false ? "" : strtolower(substr($ref, $file_ext + 1, -1));
 				$file_content = shell(cd_git . "cd $git_dir;" . "git show $ref");
-				$file_content = htmlspecialchars($file_content);
+				if (in_array($file_ext, array_keys(image_file_formats))) {
+					header("Content-Type: image/" . image_file_formats[$file_ext]);
+					header("Content-Disposition: attachment; filename=\"" . $file_name . "\"");
+					echo $file_content;
+					break;
+				}
+				else {
+					$file_content = htmlspecialchars($file_content);
+				}
 				if ($file_content == "") {
 					$file_content = "<i class='indented'>(Dieses Dateiformat kann nicht angezeigt werden)</i>";
 				} else {
@@ -304,6 +321,9 @@ function show_header() {
 			table.file_content td:nth-child(2) {
 				padding-left: 10px;
 				white-space: pre-wrap;
+			}
+			img.file_content {
+				max-width: 100%;
 			}
 		</style>
 		<script>
@@ -376,8 +396,19 @@ function show_header() {
 				console.log(responseTargetId);
 				var responseTarget = document.getElementById(responseTargetId);
 				if (responseTarget.innerHTML.trim() == "") {
-					request("/?request=file-content&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref), responseTarget);
-					responseTarget.innerHTML = "<?=TEXT_LOADING?>";
+					var fileContentURI = "/?request=file-content&git_name=" + encodeURI(git_name) + "&ref=" + encodeURI(ref);
+					var fileExt = ref.lastIndexOf("."); fileExt = (fileExt === -1) ? "" : ref.substr(fileExt + 1);
+					if (["<?=implode("\", \"", array_keys(image_file_formats))?>"].includes(fileExt)) {
+						var img = document.createElement("img");
+						img.src = fileContentURI;
+						img.classList.add("file_content");
+						responseTarget.innerHTML = "";
+						responseTarget.appendChild(img);
+					}
+					else {
+						request(fileContentURI, responseTarget);
+						responseTarget.innerHTML = "<?=TEXT_LOADING?>";
+					}
 				}
 				responseTarget.classList.toggle('hidden');
 			}
