@@ -665,7 +665,7 @@ if (isset($_POST["action"])) {
 $list = shell(cd_git . ls);
 function git_dir_filter($name) { return substr($name, -4) === ".git"; }
 function git_dir_trim($name) { return substr($name, 0, -4); }
-$git_repos = array_map(git_dir_trim, array_filter(explode("\n", $list), git_dir_filter));
+$git_repos = array_map('git_dir_trim', array_filter(explode("\n", $list), 'git_dir_filter'));
 
 if (empty($git_repos)) {
 	echo 
