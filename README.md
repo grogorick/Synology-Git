@@ -11,7 +11,7 @@ Git server web interface for small synology systems (that do not support things 
 - Manage (add/remove) ssh keys
 
 ### Required Packages
-- Git Server *(Currently, there is an issue with the bundled git shell, and a work around using the community version. See https://community.synology.com/enu/forum/8/post/147518)*
+- Git Server 
 - Web Server
 - PHP 7.0+
 - FileStation
@@ -56,3 +56,15 @@ Git server web interface for small synology systems (that do not support things 
 
 ### Screenshot
 ![screenshot](docs/screen.png)
+
+### Known issues
+Currently, there is an issue with the bundled git shell, not allowing interactive git shell sessions.  
+Run `syno-git-server-interactive-shell-fix.sh` to temporarily fix this.  
+(For details on this work around using the community version see https://community.synology.com/enu/forum/8/post/147518)
+
+For the error `fatal: detected dubious ownership in repository at '/volume1/git/...` add the following file to the home (`/var/services/homes/git`) of your git account.
+``` .gitignore
+[safe]
+        directory = *
+```
+
